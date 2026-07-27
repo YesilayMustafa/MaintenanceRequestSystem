@@ -11,6 +11,8 @@ public sealed class Department
         // Entity Framework Core tarafından kullanılacak.
     }
 
+
+
     public Department(string name, string? description = null)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -45,13 +47,41 @@ public sealed class Department
 
     public void Activate()
     {
+        if (IsActive)
+        {
+            return;
+        }
+
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Deactivate()
     {
+        if (!IsActive)
+        {
+            return;
+        }
+
         IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateDetails(string name, string? description)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException(
+                "Departman adı boş olamaz.",
+                nameof(name));
+        }
+
+        Name = name.Trim();
+
+        Description = string.IsNullOrWhiteSpace(description)
+            ? null
+            : description.Trim();
+
         UpdatedAt = DateTime.UtcNow;
     }
 }

@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.Text;
 
+using MaintenanceRequestSystem.Application.Departments.Interfaces;
+using MaintenanceRequestSystem.Application.Departments.Services;
 using MaintenanceRequestSystem.Infrastructure.Persistence;
+using MaintenanceRequestSystem.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +25,10 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(connectionString));
+
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+
+        services.AddScoped<IDepartmentService, DepartmentService>();
 
         return services;
     }
