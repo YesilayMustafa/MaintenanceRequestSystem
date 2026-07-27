@@ -5,6 +5,7 @@ using MaintenanceRequestSystem.Application.Departments.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 
@@ -37,16 +38,13 @@ public sealed class DepartmentRepository : IDepartmentRepository
     }
 
     public async Task<bool> ExistsByNameAsync(
-        string name,
-        Guid? excludedDepartmentId = null,
-        CancellationToken cancellationToken = default)
+    string name,
+    Guid? excludedDepartmentId = null,
+    CancellationToken cancellationToken = default)
     {
-        var normalizedName = name.Trim().ToLower();
-
         var query = _context.Departments
             .AsNoTracking()
-            .Where(department =>
-                department.Name.ToLower() == normalizedName);
+            .AsQueryable();
 
         if (excludedDepartmentId.HasValue)
         {
@@ -54,7 +52,14 @@ public sealed class DepartmentRepository : IDepartmentRepository
                 department.Id != excludedDepartmentId.Value);
         }
 
-        return await query.AnyAsync(cancellationToken);
+        var existingNames = await query
+            .Select(department => department.Name)
+            .ToListAsync(cancellationToken);
+
+        var normalizedName = NormalizeName(name);
+
+        return existingNames.Any(existingName =>
+            NormalizeName(existingName) == normalizedName);
     }
 
     public async Task AddAsync(
@@ -70,5 +75,11 @@ public sealed class DepartmentRepository : IDepartmentRepository
         CancellationToken cancellationToken = default)
     {
         return _context.SaveChangesAsync(cancellationToken);
+    }
+    private static string NormalizeName(string name)
+    {
+        return name
+            .Trim()
+            .ToUpper(CultureInfo.GetCultureInfo("tr-TR"));
     }
 }

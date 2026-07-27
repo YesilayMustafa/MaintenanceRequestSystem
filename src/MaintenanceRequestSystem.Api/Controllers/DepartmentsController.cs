@@ -56,86 +56,52 @@ public sealed class DepartmentsController : ControllerBase
 
     [HttpPost]
     [ProducesResponseType(
-        typeof(DepartmentDto),
-        StatusCodes.Status201Created)]
+    typeof(DepartmentDto),
+    StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DepartmentDto>> Create(
-        [FromBody] CreateDepartmentRequest request,
-        CancellationToken cancellationToken)
+    [FromBody] CreateDepartmentRequest request,
+    CancellationToken cancellationToken)
     {
-        try
-        {
-            var department =
-                await _departmentService.CreateAsync(
-                    request,
-                    cancellationToken);
+        var department =
+            await _departmentService.CreateAsync(
+                request,
+                cancellationToken);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = department.Id },
-                department);
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new
-            {
-                message = exception.Message
-            });
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Conflict(new
-            {
-                message = exception.Message
-            });
-        }
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = department.Id },
+            department);
     }
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(
-        typeof(DepartmentDto),
-        StatusCodes.Status200OK)]
+    typeof(DepartmentDto),
+    StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DepartmentDto>> Update(
-        Guid id,
-        [FromBody] UpdateDepartmentRequest request,
-        CancellationToken cancellationToken)
+    Guid id,
+    [FromBody] UpdateDepartmentRequest request,
+    CancellationToken cancellationToken)
     {
-        try
-        {
-            var department =
-                await _departmentService.UpdateAsync(
-                    id,
-                    request,
-                    cancellationToken);
+        var department =
+            await _departmentService.UpdateAsync(
+                id,
+                request,
+                cancellationToken);
 
-            if (department is null)
-            {
-                return NotFound(new
-                {
-                    message = "Departman bulunamadı."
-                });
-            }
-
-            return Ok(department);
-        }
-        catch (ArgumentException exception)
+        if (department is null)
         {
-            return BadRequest(new
+            return NotFound(new
             {
-                message = exception.Message
+                message = "Departman bulunamadı."
             });
         }
-        catch (InvalidOperationException exception)
-        {
-            return Conflict(new
-            {
-                message = exception.Message
-            });
-        }
+
+        return Ok(department);
     }
 
     [HttpPatch("{id:guid}/status")]
