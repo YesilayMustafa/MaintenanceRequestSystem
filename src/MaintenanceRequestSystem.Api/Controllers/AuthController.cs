@@ -41,7 +41,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("me")] 
+    [HttpGet("me")]
     [ProducesResponseType(
     typeof(CurrentUserDto),
     StatusCodes.Status200OK)]

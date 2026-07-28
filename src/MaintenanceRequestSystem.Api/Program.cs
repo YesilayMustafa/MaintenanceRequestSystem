@@ -7,7 +7,6 @@ using MaintenanceRequestSystem.Api.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("postgresql");
 builder.Services.AddControllers();
@@ -23,7 +22,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddJwtAuthentication();
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -32,6 +31,11 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+}
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
 // Yerel geliştirmede şimdilik kapalı.

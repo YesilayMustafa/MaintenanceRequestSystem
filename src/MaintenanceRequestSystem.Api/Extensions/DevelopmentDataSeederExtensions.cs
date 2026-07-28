@@ -11,7 +11,8 @@ public static class DevelopmentDataSeederExtensions
     public static async Task SeedDevelopmentDataAsync(
     this WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
+        if (!app.Environment.IsDevelopment() ||
+            !app.Configuration.GetValue<bool>("SeedData:Enabled"))
         {
             return;
         }

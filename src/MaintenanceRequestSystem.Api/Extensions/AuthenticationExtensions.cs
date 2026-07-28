@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using MaintenanceRequestSystem.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace MaintenanceRequestSystem.Api.Extensions;
@@ -8,40 +9,8 @@ namespace MaintenanceRequestSystem.Api.Extensions;
 public static class AuthenticationExtensions
 {
     public static IServiceCollection AddJwtAuthentication(
-        this IServiceCollection services,
-        IConfiguration configuration)
+        this IServiceCollection services)
     {
-        var jwtOptions =
-            configuration
-                .GetSection(JwtOptions.SectionName)
-                .Get<JwtOptions>()
-            ?? throw new InvalidOperationException(
-                "JWT ayarları bulunamadı.");
-
-        byte[] signingKeyBytes;
-
-        try
-        {
-            signingKeyBytes =
-                Convert.FromBase64String(
-                    jwtOptions.SigningKey);
-        }
-        catch (FormatException exception)
-        {
-            throw new InvalidOperationException(
-                "JWT imza anahtarı geçerli Base64 formatında değil.",
-                exception);
-        }
-
-        if (signingKeyBytes.Length < 32)
-        {
-            throw new InvalidOperationException(
-                "JWT imza anahtarı en az 32 byte olmalıdır.");
-        }
-
-        var securityKey =
-            new SymmetricSecurityKey(signingKeyBytes);
-
         services
             .AddAuthentication(options =>
             {
@@ -51,40 +20,58 @@ public static class AuthenticationExtensions
                 options.DefaultChallengeScheme =
                     JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(options =>
-            {
-                options.MapInboundClaims = false;
+            .AddJwtBearer();
 
-                options.TokenValidationParameters =
-                    new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = securityKey,
+        services
+            .AddOptions<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IOptions<JwtOptions>>(
+                (options, jwtOptionsAccessor) =>
+                {
+                    var jwtOptions =
+                        jwtOptionsAccessor.Value;
 
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtOptions.Issuer,
+                    var signingKeyBytes =
+                        Convert.FromBase64String(
+                            jwtOptions.SigningKey);
 
-                        ValidateAudience = true,
-                        ValidAudience = jwtOptions.Audience,
+                    options.MapInboundClaims = false;
 
-                        ValidateLifetime = true,
-                        RequireExpirationTime = true,
-                        RequireSignedTokens = true,
+                    options.TokenValidationParameters =
+                        new TokenValidationParameters
+                        {
+                            ValidateIssuerSigningKey = true,
 
-                        ValidAlgorithms =
-                            new[]
-                            {
-                                SecurityAlgorithms.HmacSha256
-                            },
+                            IssuerSigningKey =
+                                new SymmetricSecurityKey(
+                                    signingKeyBytes),
 
-                        ClockSkew = TimeSpan.FromMinutes(1),
+                            ValidateIssuer = true,
+                            ValidIssuer = jwtOptions.Issuer,
 
-                        NameClaimType =
-                            JwtRegisteredClaimNames.Name,
+                            ValidateAudience = true,
+                            ValidAudience =
+                                jwtOptions.Audience,
 
-                        RoleClaimType = "role"
-                    };
-            });
+                            ValidateLifetime = true,
+                            RequireExpirationTime = true,
+                            RequireSignedTokens = true,
+
+                            ValidAlgorithms =
+                                new[]
+                                {
+                                    SecurityAlgorithms.HmacSha256
+                                },
+
+                            ClockSkew =
+                                TimeSpan.FromMinutes(1),
+
+                            NameClaimType =
+                                JwtRegisteredClaimNames.Name,
+
+                            RoleClaimType = "role"
+                        };
+                });
 
         services.AddAuthorization();
 

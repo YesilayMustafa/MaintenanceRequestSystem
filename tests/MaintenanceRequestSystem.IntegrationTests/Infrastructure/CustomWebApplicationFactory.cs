@@ -11,11 +11,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore.Storage;
-using System.IdentityModel.Tokens.Jwt;
-using MaintenanceRequestSystem.Infrastructure.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace MaintenanceRequestSystem.IntegrationTests.Infrastructure;
 
@@ -78,7 +73,7 @@ public sealed class CustomWebApplicationFactory
 
                         ["SeedAdmin:Email"] = AdminEmail,
                         ["SeedAdmin:Password"] = AdminPassword,
-
+                        ["SeedData:Enabled"] = "true",
                         ["SeedEmployee:Email"] = EmployeeEmail,
                         ["SeedEmployee:Password"] = EmployeePassword
                     };
@@ -103,61 +98,6 @@ public sealed class CustomWebApplicationFactory
                     options.UseInMemoryDatabase(
                         _databaseName,
                         _databaseRoot));
-
-            // Token üreten JwtTokenService bu ayarları kullanacak.
-            services.RemoveAll<IOptions<JwtOptions>>();
-
-            services.AddSingleton<IOptions<JwtOptions>>(
-                Options.Create(
-                    new JwtOptions
-                    {
-                        Issuer = TestIssuer,
-                        Audience = TestAudience,
-                        SigningKey = TestSigningKey,
-                        ExpirationMinutes = 60
-                    }));
-
-            // Gelen token'ı doğrulayan JwtBearer aynı ayarları kullanacak.
-            services.PostConfigure<JwtBearerOptions>(
-                JwtBearerDefaults.AuthenticationScheme,
-                options =>
-                {
-                    options.MapInboundClaims = false;
-
-                    options.TokenValidationParameters =
-                        new TokenValidationParameters
-                        {
-                            ValidateIssuerSigningKey = true,
-
-                            IssuerSigningKey =
-                                new SymmetricSecurityKey(
-                                    TestSigningKeyBytes),
-
-                            ValidateIssuer = true,
-                            ValidIssuer = TestIssuer,
-
-                            ValidateAudience = true,
-                            ValidAudience = TestAudience,
-
-                            ValidateLifetime = true,
-                            RequireExpirationTime = true,
-                            RequireSignedTokens = true,
-
-                            ValidAlgorithms =
-                                new[]
-                                {
-                            SecurityAlgorithms.HmacSha256
-                                },
-
-                            ClockSkew =
-                                TimeSpan.FromMinutes(1),
-
-                            NameClaimType =
-                                JwtRegisteredClaimNames.Name,
-
-                            RoleClaimType = "role"
-                        };
-                });
         });
     }
 }

@@ -20,6 +20,80 @@ public sealed class AuthenticationAuthorizationTests
     {
         _client = factory.CreateClient();
     }
+    [Fact]
+    public async Task ChangeDepartmentStatus_WithEmployeeToken_ReturnsForbidden()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        var employeeToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.EmployeeEmail,
+                CustomWebApplicationFactory.EmployeePassword);
+
+        var department =
+            await CreateDepartmentAsync(adminToken);
+
+        using var request =
+            new HttpRequestMessage(
+                HttpMethod.Patch,
+                $"/api/departments/{department.Id}/status");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                employeeToken);
+
+        request.Content =
+            JsonContent.Create(
+                new ChangeDepartmentStatusRequest
+                {
+                    IsActive = false
+                });
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangeDepartmentStatus_WithAdminToken_ReturnsNoContent()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        var department =
+            await CreateDepartmentAsync(adminToken);
+
+        using var request =
+            new HttpRequestMessage(
+                HttpMethod.Patch,
+                $"/api/departments/{department.Id}/status");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                adminToken);
+
+        request.Content =
+            JsonContent.Create(
+                new ChangeDepartmentStatusRequest
+                {
+                    IsActive = false
+                });
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            response.StatusCode);
+    }
 
     [Fact]
     public async Task GetDepartments_WithoutToken_ReturnsUnauthorized()
@@ -177,5 +251,42 @@ public sealed class AuthenticationAuthorizationTests
         Assert.NotNull(result);
 
         return result.AccessToken;
+    }
+
+    private async Task<DepartmentDto> CreateDepartmentAsync(
+    string adminToken)
+    {
+        using var request =
+            new HttpRequestMessage(
+                HttpMethod.Post,
+                "/api/departments");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                adminToken);
+
+        request.Content =
+            JsonContent.Create(
+                new CreateDepartmentRequest
+                {
+                    Name =
+                        $"Yetki Test Departmanı {Guid.NewGuid()}",
+
+                    Description =
+                        "Integration test için oluşturuldu."
+                });
+
+        var response = await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        var department =
+            await response.Content
+                .ReadFromJsonAsync<DepartmentDto>();
+
+        Assert.NotNull(department);
+
+        return department;
     }
 }

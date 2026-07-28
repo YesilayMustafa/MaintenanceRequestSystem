@@ -11,7 +11,6 @@ namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 public sealed class UserRepository : IUserRepository
 {
     private readonly ApplicationDbContext _context;
-
     public UserRepository(ApplicationDbContext context)
     {
         _context = context;
