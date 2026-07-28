@@ -1,6 +1,7 @@
 ﻿using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.Departments.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Application.Common.Exceptions;
 
 namespace MaintenanceRequestSystem.Application.Departments.Services;
 
@@ -52,9 +53,8 @@ public sealed class DepartmentService : IDepartmentService
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new ArgumentException(
-                "Departman adı boş olamaz.",
-                nameof(request));
+            throw new RequestValidationException(
+                "Departman adı boş olamaz.");
         }
 
         var nameExists =
@@ -64,8 +64,8 @@ public sealed class DepartmentService : IDepartmentService
 
         if (nameExists)
         {
-            throw new InvalidOperationException(
-                "Aynı isimde bir departman zaten bulunmaktadır.");
+            throw new ConflictException(
+             "Aynı isimde bir departman zaten bulunmaktadır.");
         }
 
         var description = NormalizeDescription(request.Description);
@@ -105,9 +105,8 @@ public sealed class DepartmentService : IDepartmentService
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new ArgumentException(
-                "Departman adı boş olamaz.",
-                nameof(request));
+            throw new RequestValidationException(
+             "Departman adı boş olamaz.");
         }
 
         var nameExists =
@@ -118,8 +117,8 @@ public sealed class DepartmentService : IDepartmentService
 
         if (nameExists)
         {
-            throw new InvalidOperationException(
-                "Aynı isimde başka bir departman bulunmaktadır.");
+            throw new ConflictException(
+             "Aynı isimde başka bir departman bulunmaktadır.");
         }
 
         var description = NormalizeDescription(request.Description);

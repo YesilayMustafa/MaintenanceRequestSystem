@@ -1,14 +1,18 @@
 ﻿using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.Departments.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-
+using MaintenanceRequestSystem.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 namespace MaintenanceRequestSystem.Api.Controllers;
 
 [ApiController]
 [Route("api/departments")]
+[Authorize]
 public sealed class DepartmentsController : ControllerBase
 {
     private readonly IDepartmentService _departmentService;
+
+
 
     public DepartmentsController(
         IDepartmentService departmentService)
@@ -54,6 +58,7 @@ public sealed class DepartmentsController : ControllerBase
         return Ok(department);
     }
 
+    [Authorize(Roles = nameof(UserRole.Admin))]
     [HttpPost]
     [ProducesResponseType(
         typeof(DepartmentDto),
@@ -64,81 +69,49 @@ public sealed class DepartmentsController : ControllerBase
         [FromBody] CreateDepartmentRequest request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var department =
-                await _departmentService.CreateAsync(
-                    request,
-                    cancellationToken);
+        var department =
+            await _departmentService.CreateAsync(
+                request,
+                cancellationToken);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = department.Id },
-                department);
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new
-            {
-                message = exception.Message
-            });
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Conflict(new
-            {
-                message = exception.Message
-            });
-        }
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = department.Id },
+            department);
     }
 
-    [HttpPut("{id:guid}")]
     [ProducesResponseType(
-        typeof(DepartmentDto),
-        StatusCodes.Status200OK)]
+    typeof(DepartmentDto),
+    StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [HttpPut("{id:guid}")]
     public async Task<ActionResult<DepartmentDto>> Update(
-        Guid id,
-        [FromBody] UpdateDepartmentRequest request,
-        CancellationToken cancellationToken)
+    Guid id,
+    [FromBody] UpdateDepartmentRequest request,
+    CancellationToken cancellationToken)
     {
-        try
-        {
-            var department =
-                await _departmentService.UpdateAsync(
-                    id,
-                    request,
-                    cancellationToken);
+        var department =
+            await _departmentService.UpdateAsync(
+                id,
+                request,
+                cancellationToken);
 
-            if (department is null)
-            {
-                return NotFound(new
-                {
-                    message = "Departman bulunamadı."
-                });
-            }
-
-            return Ok(department);
-        }
-        catch (ArgumentException exception)
+        if (department is null)
         {
-            return BadRequest(new
+            return NotFound(new
             {
-                message = exception.Message
+                message = "Departman bulunamadı."
             });
         }
-        catch (InvalidOperationException exception)
-        {
-            return Conflict(new
-            {
-                message = exception.Message
-            });
-        }
+
+        return Ok(department);
     }
 
     [HttpPatch("{id:guid}/status")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ChangeStatus(

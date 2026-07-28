@@ -3,27 +3,39 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
-
+using System.Net.Mail;
 namespace MaintenanceRequestSystem.Domain.Entities;
 
 public sealed class User
 {
+    public const int MaxFullNameLength = 150;
+    public const int MaxEmailLength = 255;
+    public const int MaxPasswordHashLength = 500;
     private User()
     {
         // Entity Framework Core tarafından kullanılacak.
     }
 
     public User(
-        string fullName,
-        string email,
-        string passwordHash,
-        UserRole role,
-        Guid departmentId)
+    string fullName,
+    string email,
+    string passwordHash,
+    UserRole role,
+    Guid departmentId)
     {
         if (string.IsNullOrWhiteSpace(fullName))
         {
             throw new ArgumentException(
-                "Ad soyad boş olamaz.",
+                "Kullanıcı adı ve soyadı boş olamaz.",
+                nameof(fullName));
+        }
+
+        var normalizedFullName = fullName.Trim();
+
+        if (normalizedFullName.Length > MaxFullNameLength)
+        {
+            throw new ArgumentException(
+                $"Kullanıcı adı ve soyadı en fazla {MaxFullNameLength} karakter olabilir.",
                 nameof(fullName));
         }
 
@@ -34,17 +46,57 @@ public sealed class User
                 nameof(email));
         }
 
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+
+        if (normalizedEmail.Length > MaxEmailLength)
+        {
+            throw new ArgumentException(
+                $"E-posta adresi en fazla {MaxEmailLength} karakter olabilir.",
+                nameof(email));
+        }
+
+        if (!MailAddress.TryCreate(normalizedEmail, out var parsedEmail) ||
+            parsedEmail.Address != normalizedEmail)
+        {
+            throw new ArgumentException(
+                "Geçerli bir e-posta adresi girilmelidir.",
+                nameof(email));
+        }
+
         if (string.IsNullOrWhiteSpace(passwordHash))
         {
             throw new ArgumentException(
-                "Parola hash değeri boş olamaz.",
+                "Parola özeti boş olamaz.",
                 nameof(passwordHash));
         }
 
+        var normalizedPasswordHash = passwordHash.Trim();
+
+        if (normalizedPasswordHash.Length > MaxPasswordHashLength)
+        {
+            throw new ArgumentException(
+                $"Parola özeti en fazla {MaxPasswordHashLength} karakter olabilir.",
+                nameof(passwordHash));
+        }
+
+        if (!Enum.IsDefined(role))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(role),
+                "Geçersiz kullanıcı rolü.");
+        }
+
+        if (departmentId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir departman kimliği gereklidir.",
+                nameof(departmentId));
+        }
+
         Id = Guid.NewGuid();
-        FullName = fullName.Trim();
-        Email = email.Trim().ToLowerInvariant();
-        PasswordHash = passwordHash;
+        FullName = normalizedFullName;
+        Email = normalizedEmail;
+        PasswordHash = normalizedPasswordHash;
         Role = role;
         DepartmentId = departmentId;
         IsActive = true;
