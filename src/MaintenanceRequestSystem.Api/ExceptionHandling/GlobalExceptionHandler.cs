@@ -44,6 +44,11 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 "İşlem çakışması",
                 exception.Message),
 
+            InvalidCredentialsException => new ErrorDetails(
+                StatusCodes.Status401Unauthorized,
+                "Kimlik doğrulama başarısız",
+                exception.Message),
+
             _ => new ErrorDetails(
                 StatusCodes.Status500InternalServerError,
                 "Sunucu hatası",

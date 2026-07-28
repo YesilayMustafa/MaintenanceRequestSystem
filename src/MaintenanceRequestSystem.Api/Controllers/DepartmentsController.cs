@@ -1,14 +1,18 @@
 ﻿using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.Departments.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-
+using MaintenanceRequestSystem.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 namespace MaintenanceRequestSystem.Api.Controllers;
 
 [ApiController]
 [Route("api/departments")]
+[Authorize]
 public sealed class DepartmentsController : ControllerBase
 {
     private readonly IDepartmentService _departmentService;
+
+
 
     public DepartmentsController(
         IDepartmentService departmentService)
@@ -54,15 +58,16 @@ public sealed class DepartmentsController : ControllerBase
         return Ok(department);
     }
 
+    [Authorize(Roles = nameof(UserRole.Admin))]
     [HttpPost]
     [ProducesResponseType(
-    typeof(DepartmentDto),
-    StatusCodes.Status201Created)]
+        typeof(DepartmentDto),
+        StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DepartmentDto>> Create(
-    [FromBody] CreateDepartmentRequest request,
-    CancellationToken cancellationToken)
+        [FromBody] CreateDepartmentRequest request,
+        CancellationToken cancellationToken)
     {
         var department =
             await _departmentService.CreateAsync(
@@ -75,13 +80,14 @@ public sealed class DepartmentsController : ControllerBase
             department);
     }
 
-    [HttpPut("{id:guid}")]
     [ProducesResponseType(
     typeof(DepartmentDto),
     StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [HttpPut("{id:guid}")]
     public async Task<ActionResult<DepartmentDto>> Update(
     Guid id,
     [FromBody] UpdateDepartmentRequest request,

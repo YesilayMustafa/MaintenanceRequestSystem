@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MaintenanceRequestSystem.Api\MaintenanceRequestSystem.Api.csproj" />
+    <ProjectReference Include="..\..\src\MaintenanceRequestSystem.Infrastructure\MaintenanceRequestSystem.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
