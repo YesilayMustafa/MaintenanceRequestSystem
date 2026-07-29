@@ -76,11 +76,16 @@ public sealed class User
         string email,
         Guid departmentId)
     {
-        FullName = NormalizeFullName(fullName);
-        Email = NormalizeEmail(email);
+        var normalizedFullName =
+            NormalizeFullName(fullName);
+
+        var normalizedEmail =
+            NormalizeEmail(email);
 
         EnsureValidDepartmentId(departmentId);
 
+        FullName = normalizedFullName;
+        Email = normalizedEmail;
         DepartmentId = departmentId;
         UpdatedAt = DateTime.UtcNow;
     }
