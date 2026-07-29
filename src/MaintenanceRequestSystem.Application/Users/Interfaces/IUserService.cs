@@ -2,32 +2,35 @@
 using System.Collections.Generic;
 using System.Text;
 
-using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Application.Users.Dtos;
 
 namespace MaintenanceRequestSystem.Application.Users.Interfaces;
 
-public interface IUserRepository
+public interface IUserService
 {
-    Task<IReadOnlyList<User>> GetAllAsync(
+    Task<IReadOnlyList<UserDto>> GetAllAsync(
         CancellationToken cancellationToken = default);
 
-    Task<User?> GetByIdAsync(
+    Task<UserDto> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<User?> GetByEmailAsync(
-        string email,
+    Task<UserDto> CreateAsync(
+        CreateUserRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<bool> EmailExistsAsync(
-        string email,
-        Guid? excludedUserId = null,
+    Task<UserDto> UpdateAsync(
+        Guid id,
+        UpdateUserRequest request,
         CancellationToken cancellationToken = default);
 
-    Task AddAsync(
-        User user,
+    Task ChangeStatusAsync(
+        Guid id,
+        ChangeUserStatusRequest request,
         CancellationToken cancellationToken = default);
 
-    Task SaveChangesAsync(
+    Task ChangeRoleAsync(
+        Guid id,
+        ChangeUserRoleRequest request,
         CancellationToken cancellationToken = default);
 }

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MaintenanceRequestSystem.Application.Authentication.Services;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Users.Services;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -32,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IPasswordHashService, PasswordHashService>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserService, UserService>();
 
         services.AddScoped<
             IAuthenticationService,
