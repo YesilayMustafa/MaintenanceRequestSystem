@@ -5,6 +5,8 @@ using MaintenanceRequestSystem.Application.Users.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using MaintenanceRequestSystem.Application.Common.Exceptions;
+using Npgsql;
 
 namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 
@@ -79,9 +81,21 @@ public sealed class UserRepository : IUserRepository
     }
 
     public async Task SaveChangesAsync(
-        CancellationToken cancellationToken = default)
+    CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync(
-            cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation
+            })
+        {
+            throw new ConflictException(
+                "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var.");
+        }
     }
 }
