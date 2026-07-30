@@ -44,6 +44,11 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 "İşlem çakışması",
                 exception.Message),
 
+            ForbiddenException => new ErrorDetails(
+                StatusCodes.Status403Forbidden,
+                "Erişim reddedildi",
+                exception.Message),
+
             InvalidCredentialsException => new ErrorDetails(
                 StatusCodes.Status401Unauthorized,
                 "Kimlik doğrulama başarısız",
@@ -53,6 +58,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 StatusCodes.Status500InternalServerError,
                 "Sunucu hatası",
                 "Beklenmeyen bir hata oluştu.")
+
+
         };
 
         if (error.StatusCode >= 500)

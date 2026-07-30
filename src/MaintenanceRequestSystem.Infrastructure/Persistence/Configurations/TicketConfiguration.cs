@@ -22,12 +22,12 @@ public sealed class TicketConfiguration
 
         builder.Property(ticket => ticket.Title)
             .HasColumnName("title")
-            .HasMaxLength(200)
+            .HasMaxLength(Ticket.MaxTitleLength)
             .IsRequired();
 
         builder.Property(ticket => ticket.Description)
             .HasColumnName("description")
-            .HasMaxLength(4000)
+            .HasMaxLength(Ticket.MaxDescriptionLength)
             .IsRequired();
 
         builder.Property(ticket => ticket.Priority)
@@ -55,11 +55,11 @@ public sealed class TicketConfiguration
 
         builder.Property(ticket => ticket.WaitingReason)
             .HasColumnName("waiting_reason")
-            .HasMaxLength(1000);
+            .HasMaxLength(Ticket.MaxWaitingReasonLength);
 
         builder.Property(ticket => ticket.ResolutionDescription)
             .HasColumnName("resolution_description")
-            .HasMaxLength(2000);
+            .HasMaxLength(Ticket.MaxResolutionDescriptionLength);
 
         builder.Property(ticket => ticket.CreatedAt)
             .HasColumnName("created_at")

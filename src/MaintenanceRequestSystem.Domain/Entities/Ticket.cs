@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-using MaintenanceRequestSystem.Domain.Enums;
+﻿using MaintenanceRequestSystem.Domain.Enums;
 
 namespace MaintenanceRequestSystem.Domain.Entities;
 
 public sealed class Ticket
 {
+    public const int MaxTitleLength = 200;
+    public const int MaxDescriptionLength = 4000;
+    public const int MaxWaitingReasonLength = 1000;
+    public const int MaxResolutionDescriptionLength = 2000;
+
     private Ticket()
     {
         // Entity Framework Core tarafından kullanılacak.
@@ -20,25 +21,21 @@ public sealed class Ticket
         string description,
         TicketPriority priority)
     {
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            throw new ArgumentException(
-                "Talep başlığı boş olamaz.",
-                nameof(title));
-        }
+        var normalizedTitle =
+            NormalizeTitle(title);
 
-        if (string.IsNullOrWhiteSpace(description))
-        {
-            throw new ArgumentException(
-                "Talep açıklaması boş olamaz.",
-                nameof(description));
-        }
+        var normalizedDescription =
+            NormalizeDescription(description);
+
+        EnsureValidAssetId(assetId);
+        EnsureValidUserId(createdByUserId);
+        EnsureValidPriority(priority);
 
         Id = Guid.NewGuid();
         AssetId = assetId;
         CreatedByUserId = createdByUserId;
-        Title = title.Trim();
-        Description = description.Trim();
+        Title = normalizedTitle;
+        Description = normalizedDescription;
         Priority = priority;
         Status = TicketStatus.Open;
         CreatedAt = DateTime.UtcNow;
@@ -83,4 +80,83 @@ public sealed class Ticket
 
     public ICollection<TicketHistory> Histories { get; private set; }
         = new List<TicketHistory>();
+
+    private static string NormalizeTitle(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new ArgumentException(
+                "Talep başlığı boş olamaz.",
+                nameof(title));
+        }
+
+        var normalizedTitle = title.Trim();
+
+        if (normalizedTitle.Length > MaxTitleLength)
+        {
+            throw new ArgumentException(
+                $"Talep başlığı en fazla " +
+                $"{MaxTitleLength} karakter olabilir.",
+                nameof(title));
+        }
+
+        return normalizedTitle;
+    }
+
+    private static string NormalizeDescription(
+        string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            throw new ArgumentException(
+                "Talep açıklaması boş olamaz.",
+                nameof(description));
+        }
+
+        var normalizedDescription =
+            description.Trim();
+
+        if (normalizedDescription.Length >
+            MaxDescriptionLength)
+        {
+            throw new ArgumentException(
+                $"Talep açıklaması en fazla " +
+                $"{MaxDescriptionLength} karakter olabilir.",
+                nameof(description));
+        }
+
+        return normalizedDescription;
+    }
+
+    private static void EnsureValidAssetId(Guid assetId)
+    {
+        if (assetId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir cihaz kimliği gereklidir.",
+                nameof(assetId));
+        }
+    }
+
+    private static void EnsureValidUserId(
+        Guid createdByUserId)
+    {
+        if (createdByUserId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir kullanıcı kimliği gereklidir.",
+                nameof(createdByUserId));
+        }
+    }
+
+    private static void EnsureValidPriority(
+        TicketPriority priority)
+    {
+        if (!Enum.IsDefined(priority))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(priority),
+                "Geçersiz talep önceliği.");
+        }
+    }
 }
