@@ -22,12 +22,12 @@ public sealed class AssetConfiguration
 
         builder.Property(asset => asset.Name)
             .HasColumnName("name")
-            .HasMaxLength(150)
+            .HasMaxLength(Asset.MaxNameLength)
             .IsRequired();
 
         builder.Property(asset => asset.SerialNumber)
             .HasColumnName("serial_number")
-            .HasMaxLength(100)
+            .HasMaxLength(Asset.MaxSerialNumberLength)
             .IsRequired();
 
         builder.HasIndex(asset => asset.SerialNumber)
@@ -41,7 +41,7 @@ public sealed class AssetConfiguration
 
         builder.Property(asset => asset.Location)
             .HasColumnName("location")
-            .HasMaxLength(200);
+            .HasMaxLength(Asset.MaxLocationLength);
 
         builder.Property(asset => asset.DepartmentId)
             .HasColumnName("department_id")
