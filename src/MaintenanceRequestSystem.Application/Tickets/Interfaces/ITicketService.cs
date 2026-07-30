@@ -1,5 +1,6 @@
 ﻿using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Application.Common.Models;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Interfaces;
 
@@ -15,4 +16,9 @@ public interface ITicketService
         Guid currentUserId,
         UserRole currentUserRole,
         CancellationToken cancellationToken = default);
+    Task<PagedResult<TicketDto>> GetPagedAsync(
+    Guid currentUserId,
+    UserRole currentUserRole,
+    TicketListQuery query,
+    CancellationToken cancellationToken = default);
 }

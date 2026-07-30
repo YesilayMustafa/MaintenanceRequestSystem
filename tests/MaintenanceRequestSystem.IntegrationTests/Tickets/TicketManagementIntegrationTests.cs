@@ -8,6 +8,7 @@ using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
+using MaintenanceRequestSystem.Application.Common.Models;
 
 namespace MaintenanceRequestSystem.IntegrationTests.Tickets;
 
@@ -33,6 +34,278 @@ public sealed class TicketManagementIntegrationTests
         Assert.Equal(
             HttpStatusCode.Unauthorized,
             response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTickets_WithPagination_ReturnsCorrectPages()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        var employeeToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.EmployeeEmail,
+                CustomWebApplicationFactory.EmployeePassword);
+
+        var departmentId =
+            await GetActiveDepartmentIdAsync(adminToken);
+
+        var asset =
+            await CreateAssetAsync(
+                adminToken,
+                departmentId);
+
+        await CreateTicketAsync(
+            employeeToken,
+            asset.Id,
+            "Pagination Talebi 1",
+            TicketPriority.Low);
+
+        await CreateTicketAsync(
+            employeeToken,
+            asset.Id,
+            "Pagination Talebi 2",
+            TicketPriority.Medium);
+
+        await CreateTicketAsync(
+            employeeToken,
+            asset.Id,
+            "Pagination Talebi 3",
+            TicketPriority.High);
+
+        var firstPage =
+            await GetPagedTicketsAsync(
+                adminToken,
+                $"/api/tickets?assetId={asset.Id}" +
+                "&pageNumber=1&pageSize=2");
+
+        Assert.Equal(3, firstPage.TotalCount);
+        Assert.Equal(2, firstPage.TotalPages);
+        Assert.Equal(2, firstPage.Items.Count);
+        Assert.Equal(1, firstPage.PageNumber);
+        Assert.Equal(2, firstPage.PageSize);
+
+        var secondPage =
+            await GetPagedTicketsAsync(
+                adminToken,
+                $"/api/tickets?assetId={asset.Id}" +
+                "&pageNumber=2&pageSize=2");
+
+        Assert.Single(secondPage.Items);
+        Assert.Equal(2, secondPage.PageNumber);
+        Assert.Equal(3, secondPage.TotalCount);
+        Assert.Equal(2, secondPage.TotalPages);
+    }
+    [Fact]
+    public async Task GetTickets_SortedByTitleAscending_ReturnsOrderedItems()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        var employeeToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.EmployeeEmail,
+                CustomWebApplicationFactory.EmployeePassword);
+
+        var departmentId =
+            await GetActiveDepartmentIdAsync(adminToken);
+
+        var asset =
+            await CreateAssetAsync(
+                adminToken,
+                departmentId);
+
+        await CreateTicketAsync(
+            employeeToken,
+            asset.Id,
+            "C Talebi",
+            TicketPriority.Low);
+
+        await CreateTicketAsync(
+            employeeToken,
+            asset.Id,
+            "A Talebi",
+            TicketPriority.Low);
+
+        await CreateTicketAsync(
+            employeeToken,
+            asset.Id,
+            "B Talebi",
+            TicketPriority.Low);
+
+        var result =
+            await GetPagedTicketsAsync(
+                adminToken,
+                $"/api/tickets?assetId={asset.Id}" +
+                "&pageNumber=1&pageSize=20" +
+                "&sortBy=title&sortDescending=false");
+
+        var titles =
+            result.Items
+                .Select(ticket => ticket.Title)
+                .ToList();
+
+        Assert.Equal(
+            new[]
+            {
+            "A Talebi",
+            "B Talebi",
+            "C Talebi"
+            },
+            titles);
+    }
+
+    [Fact]
+    public async Task GetTickets_WithInvalidPageSize_ReturnsBadRequest()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                "/api/tickets?pageNumber=1&pageSize=101",
+                adminToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTickets_WithFilters_ReturnsMatchingTickets()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        var employeeToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.EmployeeEmail,
+                CustomWebApplicationFactory.EmployeePassword);
+
+        var departmentId =
+            await GetActiveDepartmentIdAsync(adminToken);
+
+        var asset =
+            await CreateAssetAsync(
+                adminToken,
+                departmentId);
+
+        var highTicket =
+            await CreateTicketAsync(
+                employeeToken,
+                asset.Id,
+                "High filtre talebi",
+                TicketPriority.High);
+
+        await CreateTicketAsync(
+            employeeToken,
+            asset.Id,
+            "Critical filtre talebi",
+            TicketPriority.Critical);
+
+        var result =
+            await GetPagedTicketsAsync(
+                adminToken,
+                $"/api/tickets?assetId={asset.Id}" +
+                "&status=1&priority=3" +
+                "&pageNumber=1&pageSize=20");
+
+        var filteredTicket =
+            Assert.Single(result.Items);
+
+        Assert.Equal(
+            highTicket.Id,
+            filteredTicket.Id);
+
+        Assert.Equal(
+            "Open",
+            filteredTicket.Status);
+
+        Assert.Equal(
+            "High",
+            filteredTicket.Priority);
+    }
+
+    [Fact]
+    public async Task GetTickets_WithEmployeeToken_ReturnsOnlyOwnTickets()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        var employeeToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.EmployeeEmail,
+                CustomWebApplicationFactory.EmployeePassword);
+
+        var departmentId =
+            await GetActiveDepartmentIdAsync(adminToken);
+
+        var asset =
+            await CreateAssetAsync(
+                adminToken,
+                departmentId);
+
+        var ownTicket =
+            await CreateTicketAsync(
+                employeeToken,
+                asset.Id,
+                "Çalışanın kendi talebi",
+                TicketPriority.High);
+
+        var secondEmployee =
+            await CreateEmployeeAsync(adminToken);
+
+        var secondEmployeeToken =
+            await LoginAsync(
+                secondEmployee.Email,
+                secondEmployee.Password);
+
+        await CreateTicketAsync(
+            secondEmployeeToken,
+            asset.Id,
+            "Başka çalışanın talebi",
+            TicketPriority.Medium);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets?assetId={asset.Id}" +
+                "&pageNumber=1&pageSize=20",
+                employeeToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        var result =
+            await response.Content
+                .ReadFromJsonAsync<PagedResult<TicketDto>>();
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        Assert.NotNull(result);
+
+        var visibleTicket =
+            Assert.Single(result.Items);
+
+        Assert.Equal(
+            ownTicket.Id,
+            visibleTicket.Id);
     }
 
     [Fact]
@@ -260,6 +533,68 @@ public sealed class TicketManagementIntegrationTests
         Assert.Equal(
             HttpStatusCode.BadRequest,
             createResponse.StatusCode);
+    }
+
+    private async Task<TicketDto> CreateTicketAsync(
+    string accessToken,
+    Guid assetId,
+    string title,
+    TicketPriority priority)
+    {
+        var requestBody =
+            new CreateTicketRequest
+            {
+                AssetId = assetId,
+                Title = title,
+                Description =
+                    $"{title} için integration test açıklaması.",
+                Priority = priority
+            };
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Post,
+                "/api/tickets",
+                accessToken,
+                requestBody);
+
+        var response =
+            await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+
+        return ticket;
+    }
+
+    private async Task<PagedResult<TicketDto>>
+        GetPagedTicketsAsync(
+            string accessToken,
+            string requestUri)
+    {
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                requestUri,
+                accessToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        var result =
+            await response.Content
+                .ReadFromJsonAsync<PagedResult<TicketDto>>();
+
+        Assert.NotNull(result);
+
+        return result;
     }
 
     private async Task<TicketSetup> CreateTicketSetupAsync()

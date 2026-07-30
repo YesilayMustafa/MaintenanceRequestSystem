@@ -5,6 +5,7 @@ using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MaintenanceRequestSystem.Application.Common.Models;
 
 namespace MaintenanceRequestSystem.Api.Controllers;
 
@@ -51,6 +52,33 @@ public sealed class TicketsController : ControllerBase
             nameof(GetById),
             new { id = ticket.Id },
             ticket);
+    }
+
+    [HttpGet]
+    [ProducesResponseType(
+    typeof(PagedResult<TicketDto>),
+    StatusCodes.Status200OK)]
+    [ProducesResponseType(
+    StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PagedResult<TicketDto>>> GetAll(
+    [FromQuery] TicketListQuery query,
+    CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _ticketService.GetPagedAsync(
+                userId,
+                role,
+                query,
+                cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]

@@ -315,6 +315,35 @@ public sealed class TicketServiceTests
             return Task.FromResult(ticket);
         }
 
+        public Task<(IReadOnlyList<Ticket> Items, int TotalCount)>
+    GetPagedAsync(
+        Guid currentUserId,
+        UserRole currentUserRole,
+        TicketListQuery query,
+        CancellationToken cancellationToken = default)
+        {
+            IEnumerable<Ticket> filteredTickets =
+                Tickets;
+
+            if (currentUserRole == UserRole.Employee)
+            {
+                filteredTickets =
+                    filteredTickets.Where(
+                        ticket =>
+                            ticket.CreatedByUserId ==
+                            currentUserId);
+            }
+
+            var items =
+                filteredTickets.ToList();
+
+            return Task.FromResult(
+                (
+                    (IReadOnlyList<Ticket>)items,
+                    items.Count
+                ));
+        }
+
         public Task AddAsync(
             Ticket ticket,
             CancellationToken cancellationToken = default)

@@ -5,6 +5,7 @@ using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Application.Common.Models;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
 
@@ -22,6 +23,49 @@ public sealed class TicketService : ITicketService
         _ticketRepository = ticketRepository;
         _assetRepository = assetRepository;
         _userRepository = userRepository;
+    }
+
+    public async Task<PagedResult<TicketDto>> GetPagedAsync(
+    Guid currentUserId,
+    UserRole currentUserRole,
+    TicketListQuery query,
+    CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        ArgumentNullException.ThrowIfNull(query);
+
+        ValidateListQuery(
+            currentUserRole,
+            query);
+
+        var result =
+            await _ticketRepository.GetPagedAsync(
+                currentUserId,
+                currentUserRole,
+                query,
+                cancellationToken);
+
+        var items =
+            result.Items
+                .Select(ticket => MapToDto(ticket))
+                .ToList();
+
+        var totalPages =
+            result.TotalCount == 0
+                ? 0
+                : (int)Math.Ceiling(
+                    result.TotalCount /
+                    (double)query.PageSize);
+
+        return new PagedResult<TicketDto>(
+            items,
+            query.PageNumber,
+            query.PageSize,
+            result.TotalCount,
+            totalPages);
     }
 
     public async Task<TicketDto> CreateAsync(
@@ -165,5 +209,67 @@ public sealed class TicketService : ITicketService
             ticket.UpdatedAt,
             ticket.ResolvedAt,
             ticket.ClosedAt);
+    }
+
+    private static void ValidateListQuery(
+    UserRole currentUserRole,
+    TicketListQuery query)
+    {
+        if (!Enum.IsDefined(currentUserRole))
+        {
+            throw new RequestValidationException(
+                "Geçersiz kullanıcı rolü.");
+        }
+
+        if (query.PageNumber < 1)
+        {
+            throw new RequestValidationException(
+                "Sayfa numarası en az 1 olmalıdır.");
+        }
+
+        if (query.PageSize is < 1 or > 100)
+        {
+            throw new RequestValidationException(
+                "Sayfa boyutu 1 ile 100 arasında olmalıdır.");
+        }
+
+        if (query.Status.HasValue &&
+            !Enum.IsDefined(query.Status.Value))
+        {
+            throw new RequestValidationException(
+                "Geçersiz talep durumu.");
+        }
+
+        if (query.Priority.HasValue &&
+            !Enum.IsDefined(query.Priority.Value))
+        {
+            throw new RequestValidationException(
+                "Geçersiz talep önceliği.");
+        }
+
+        if (query.AssetId == Guid.Empty)
+        {
+            throw new RequestValidationException(
+                "Geçerli bir cihaz kimliği gereklidir.");
+        }
+
+        var allowedSortFields =
+            new[]
+            {
+            "createdat",
+            "title",
+            "priority",
+            "status"
+            };
+
+        var normalizedSortBy =
+            query.SortBy.Trim().ToLowerInvariant();
+
+        if (!allowedSortFields.Contains(
+                normalizedSortBy))
+        {
+            throw new RequestValidationException(
+                "Sıralama alanı createdAt, title, priority veya status olmalıdır.");
+        }
     }
 }
