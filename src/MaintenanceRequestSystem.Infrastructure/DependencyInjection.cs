@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿
 using MaintenanceRequestSystem.Application.Authentication.Interfaces;
 using MaintenanceRequestSystem.Infrastructure.Authentication;
 using MaintenanceRequestSystem.Application.Departments.Interfaces;
@@ -13,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using MaintenanceRequestSystem.Application.Authentication.Services;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Services;
+using MaintenanceRequestSystem.Application.Assets.Interfaces;
+using MaintenanceRequestSystem.Application.Assets.Services;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -34,6 +34,8 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHashService, PasswordHashService>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAssetRepository, AssetRepository>();
+        services.AddScoped<IAssetService, AssetService>();
 
         services.AddScoped<
             IAuthenticationService,
