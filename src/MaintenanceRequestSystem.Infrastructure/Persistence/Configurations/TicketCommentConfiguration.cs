@@ -30,7 +30,7 @@ public sealed class TicketCommentConfiguration
 
         builder.Property(comment => comment.Content)
             .HasColumnName("content")
-            .HasMaxLength(2000)
+            .HasMaxLength(TicketComment.MaxContentLength)
             .IsRequired();
 
         builder.Property(comment => comment.CreatedAt)
