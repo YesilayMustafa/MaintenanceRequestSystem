@@ -79,6 +79,10 @@ public sealed class TicketService : ITicketService
 
         ArgumentNullException.ThrowIfNull(request);
 
+        EnsureValidId(
+    request.AssetId,
+    "Geçerli bir cihaz kimliği gereklidir.");
+
         var user =
             await _userRepository.GetByIdAsync(
                 createdByUserId,
@@ -134,10 +138,10 @@ public sealed class TicketService : ITicketService
     }
 
     public async Task<TicketDto> GetByIdAsync(
-        Guid id,
-        Guid currentUserId,
-        UserRole currentUserRole,
-        CancellationToken cancellationToken = default)
+    Guid id,
+    Guid currentUserId,
+    UserRole currentUserRole,
+    CancellationToken cancellationToken = default)
     {
         EnsureValidId(
             id,
@@ -146,6 +150,8 @@ public sealed class TicketService : ITicketService
         EnsureValidId(
             currentUserId,
             "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
 
         var ticket =
             await _ticketRepository.GetByIdAsync(
@@ -169,13 +175,25 @@ public sealed class TicketService : ITicketService
     }
 
     private static void EnsureValidId(
-        Guid id,
-        string errorMessage)
+    Guid id,
+    string errorMessage)
     {
         if (id == Guid.Empty)
         {
             throw new RequestValidationException(
                 errorMessage);
+        }
+    }
+
+    private static void EnsureSupportedRole(
+        UserRole role)
+    {
+        if (!Enum.IsDefined(
+                typeof(UserRole),
+                role))
+        {
+            throw new ForbiddenException(
+                "Desteklenmeyen kullanıcı rolü.");
         }
     }
 
@@ -211,14 +229,17 @@ public sealed class TicketService : ITicketService
             ticket.ClosedAt);
     }
 
+
     private static void ValidateListQuery(
     UserRole currentUserRole,
     TicketListQuery query)
     {
-        if (!Enum.IsDefined(currentUserRole))
+        if (!Enum.IsDefined(
+        typeof(UserRole),
+        currentUserRole))
         {
-            throw new RequestValidationException(
-                "Geçersiz kullanıcı rolü.");
+            throw new ForbiddenException(
+                "Desteklenmeyen kullanıcı rolü.");
         }
 
         if (query.PageNumber < 1)
@@ -232,12 +253,22 @@ public sealed class TicketService : ITicketService
             throw new RequestValidationException(
                 "Sayfa boyutu 1 ile 100 arasında olmalıdır.");
         }
+        var offset =
+    ((long)query.PageNumber - 1L) *
+    query.PageSize;
 
-        if (query.Status.HasValue &&
-            !Enum.IsDefined(query.Status.Value))
+        if (offset > int.MaxValue)
         {
             throw new RequestValidationException(
-                "Geçersiz talep durumu.");
+                "İstenen sayfa numarası desteklenen sınırı aşıyor.");
+        }
+
+        if (!Enum.IsDefined(
+        typeof(UserRole),
+        currentUserRole))
+        {
+            throw new ForbiddenException(
+                "Desteklenmeyen kullanıcı rolü.");
         }
 
         if (query.Priority.HasValue &&
@@ -272,4 +303,7 @@ public sealed class TicketService : ITicketService
                 "Sıralama alanı createdAt, title, priority veya status olmalıdır.");
         }
     }
+
+
+
 }

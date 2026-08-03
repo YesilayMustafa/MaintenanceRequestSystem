@@ -71,8 +71,9 @@ public sealed class TicketRepository : ITicketRepository
                 query.SortDescending);
 
         var skip =
-            (query.PageNumber - 1) *
-            query.PageSize;
+    (int)(
+        ((long)query.PageNumber - 1L) *
+        query.PageSize);
 
         var items =
             await ticketQuery
@@ -123,11 +124,13 @@ public sealed class TicketRepository : ITicketRepository
         {
             "title" when sortDescending =>
                 query.OrderByDescending(
-                    ticket => ticket.Title),
+                    ticket => ticket.Title)
+                .ThenBy(ticket => ticket.Id),
 
             "title" =>
                 query.OrderBy(
-                    ticket => ticket.Title),
+                    ticket => ticket.Title)
+                .ThenBy(ticket => ticket.Id),
 
             "priority" when sortDescending =>
                 query.OrderByDescending(
@@ -137,7 +140,8 @@ public sealed class TicketRepository : ITicketRepository
                         ticket.Priority ==
                         TicketPriority.High ? 3 :
                         ticket.Priority ==
-                        TicketPriority.Medium ? 2 : 1),
+                        TicketPriority.Medium ? 2 : 1)
+                .ThenBy(ticket => ticket.Id),
 
             "priority" =>
                 query.OrderBy(
@@ -147,7 +151,8 @@ public sealed class TicketRepository : ITicketRepository
                         ticket.Priority ==
                         TicketPriority.High ? 3 :
                         ticket.Priority ==
-                        TicketPriority.Medium ? 2 : 1),
+                        TicketPriority.Medium ? 2 : 1)
+                .ThenBy(ticket => ticket.Id),
 
             "status" when sortDescending =>
                 query.OrderByDescending(
@@ -163,7 +168,8 @@ public sealed class TicketRepository : ITicketRepository
                         ticket.Status ==
                         TicketStatus.InProgress ? 3 :
                         ticket.Status ==
-                        TicketStatus.Assigned ? 2 : 1),
+                        TicketStatus.Assigned ? 2 : 1)
+                .ThenBy(ticket => ticket.Id),
 
             "status" =>
                 query.OrderBy(
@@ -179,15 +185,18 @@ public sealed class TicketRepository : ITicketRepository
                         ticket.Status ==
                         TicketStatus.InProgress ? 3 :
                         ticket.Status ==
-                        TicketStatus.Assigned ? 2 : 1),
+                        TicketStatus.Assigned ? 2 : 1)
+                .ThenBy(ticket => ticket.Id),
 
             _ when sortDescending =>
                 query.OrderByDescending(
-                    ticket => ticket.CreatedAt),
+                    ticket => ticket.CreatedAt)
+                .ThenBy(ticket => ticket.Id),
 
             _ =>
                 query.OrderBy(
                     ticket => ticket.CreatedAt)
+                .ThenBy(ticket => ticket.Id)
         };
     }
 }

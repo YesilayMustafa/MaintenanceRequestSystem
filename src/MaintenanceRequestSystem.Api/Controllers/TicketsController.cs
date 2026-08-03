@@ -11,7 +11,11 @@ namespace MaintenanceRequestSystem.Api.Controllers;
 
 [ApiController]
 [Route("api/tickets")]
-[Authorize]
+[Authorize(
+    Roles =
+        nameof(UserRole.Employee) + "," +
+        nameof(UserRole.Technician) + "," +
+        nameof(UserRole.Admin))]
 public sealed class TicketsController : ControllerBase
 {
     private readonly ITicketService _ticketService;
@@ -41,6 +45,7 @@ public sealed class TicketsController : ControllerBase
         {
             return Unauthorized();
         }
+
 
         var ticket =
             await _ticketService.CreateAsync(
@@ -127,10 +132,13 @@ public sealed class TicketsController : ControllerBase
                 out userId);
 
         var validRole =
-            Enum.TryParse(
+            Enum.TryParse<UserRole>(
                 roleValue,
                 ignoreCase: true,
-                out role);
+                out role) &&
+            Enum.IsDefined(
+                typeof(UserRole),
+                role);
 
         return validUserId && validRole;
     }

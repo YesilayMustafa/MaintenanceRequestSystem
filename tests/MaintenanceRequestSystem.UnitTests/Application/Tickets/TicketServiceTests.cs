@@ -84,6 +84,68 @@ public sealed class TicketServiceTests
         Assert.Equal("Open", result.Status);
         Assert.Equal("High", result.Priority);
     }
+    [Fact]
+    public async Task GetByIdAsync_WithUnsupportedRole_ThrowsForbiddenException()
+    {
+        var service =
+            new TicketService(
+                new FakeTicketRepository(),
+                new FakeAssetRepository(),
+                new FakeUserRepository());
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => service.GetByIdAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                (UserRole)999));
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithOverflowingOffset_ThrowsValidationException()
+    {
+        var service =
+            new TicketService(
+                new FakeTicketRepository(),
+                new FakeAssetRepository(),
+                new FakeUserRepository());
+
+        var query =
+            new TicketListQuery
+            {
+                PageNumber = int.MaxValue,
+                PageSize = 100
+            };
+
+        await Assert.ThrowsAsync<RequestValidationException>(
+            () => service.GetPagedAsync(
+                Guid.NewGuid(),
+                UserRole.Admin,
+                query));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithEmptyAssetId_ThrowsValidationException()
+    {
+        var service =
+            new TicketService(
+                new FakeTicketRepository(),
+                new FakeAssetRepository(),
+                new FakeUserRepository());
+
+        var request =
+            new CreateTicketRequest
+            {
+                AssetId = Guid.Empty,
+                Title = "Test talebi",
+                Description = "Test açıklaması",
+                Priority = TicketPriority.Medium
+            };
+
+        await Assert.ThrowsAsync<RequestValidationException>(
+            () => service.CreateAsync(
+                Guid.NewGuid(),
+                request));
+    }
 
     [Fact]
     public async Task CreateAsync_WithMissingUser_ThrowsKeyNotFoundException()

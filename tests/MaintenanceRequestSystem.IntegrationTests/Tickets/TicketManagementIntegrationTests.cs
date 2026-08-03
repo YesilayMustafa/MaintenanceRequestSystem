@@ -9,6 +9,12 @@ using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
 using MaintenanceRequestSystem.Application.Common.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using MaintenanceRequestSystem.Infrastructure.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace MaintenanceRequestSystem.IntegrationTests.Tickets;
 
@@ -16,12 +22,15 @@ public sealed class TicketManagementIntegrationTests
     : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public TicketManagementIntegrationTests(
         CustomWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
+
 
     [Fact]
     public async Task CreateTicket_WithoutToken_ReturnsUnauthorized()
@@ -33,6 +42,50 @@ public sealed class TicketManagementIntegrationTests
 
         Assert.Equal(
             HttpStatusCode.Unauthorized,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTickets_WithOverflowingOffset_ReturnsBadRequest()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                "/api/tickets" +
+                "?pageNumber=2147483647" +
+                "&pageSize=100",
+                adminToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTickets_WithUnsupportedRoleToken_ReturnsForbidden()
+    {
+        var accessToken =
+            CreateTokenWithRole("999");
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                "/api/tickets?pageNumber=1&pageSize=10",
+                accessToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
             response.StatusCode);
     }
 
@@ -810,6 +863,60 @@ public sealed class TicketManagementIntegrationTests
         }
 
         return request;
+    }
+
+    private string CreateTokenWithRole(
+    string role)
+    {
+        var options =
+            _factory.Services
+                .GetRequiredService<IOptions<JwtOptions>>()
+                .Value;
+
+        var signingKey =
+            new SymmetricSecurityKey(
+                Convert.FromBase64String(
+                    options.SigningKey));
+
+        var credentials =
+            new SigningCredentials(
+                signingKey,
+                SecurityAlgorithms.HmacSha256);
+
+        var now = DateTime.UtcNow;
+
+        var token =
+            new JwtSecurityToken(
+                issuer: options.Issuer,
+                audience: options.Audience,
+                claims:
+                [
+                    new Claim(
+                    JwtRegisteredClaimNames.Sub,
+                    Guid.NewGuid().ToString()),
+
+                new Claim(
+                    JwtRegisteredClaimNames.Name,
+                    "Desteklenmeyen Rol Kullanıcısı"),
+
+                new Claim(
+                    JwtRegisteredClaimNames.Email,
+                    "unsupported-role@example.com"),
+
+                new Claim(
+                    "role",
+                    role),
+
+                new Claim(
+                    JwtRegisteredClaimNames.Jti,
+                    Guid.NewGuid().ToString())
+                ],
+                notBefore: now,
+                expires: now.AddMinutes(5),
+                signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler()
+            .WriteToken(token);
     }
 
     private sealed record TicketSetup(
