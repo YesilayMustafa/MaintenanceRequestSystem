@@ -137,6 +137,81 @@ public sealed class TicketService : ITicketService
             user);
     }
 
+    public async Task<TicketDto> AssignAsync(
+    Guid id,
+    Guid currentUserId,
+    UserRole currentUserRole,
+    AssignTicketRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole != UserRole.Admin)
+        {
+            throw new ForbiddenException(
+                "Yalnızca yöneticiler talep atayabilir.");
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        EnsureValidId(
+            request.TechnicianId,
+            "Geçerli bir teknik personel kimliği gereklidir.");
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var technician =
+            await _userRepository.GetByIdAsync(
+                request.TechnicianId,
+                cancellationToken);
+
+        if (technician is null)
+        {
+            throw new KeyNotFoundException(
+                "Teknik personel bulunamadı.");
+        }
+
+        if (!technician.IsActive)
+        {
+            throw new RequestValidationException(
+                "Pasif bir kullanıcıya talep atanamaz.");
+        }
+
+        if (technician.Role != UserRole.Technician)
+        {
+            throw new RequestValidationException(
+                "Talep yalnızca teknik personel rolündeki kullanıcıya atanabilir.");
+        }
+
+        ticket.Assign(
+            technician.Id,
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(
+            ticket,
+            assignedTechnician: technician);
+    }
+
     public async Task<TicketDto> GetByIdAsync(
     Guid id,
     Guid currentUserId,
@@ -200,8 +275,13 @@ public sealed class TicketService : ITicketService
     private static TicketDto MapToDto(
         Ticket ticket,
         Asset? asset = null,
-        User? createdByUser = null)
+        User? createdByUser = null,
+        User? assignedTechnician = null)
     {
+
+        var ticketAssignedTechnician =
+    assignedTechnician ??
+    ticket.AssignedTechnician;
         var ticketAsset =
             asset ?? ticket.Asset;
 
@@ -220,7 +300,7 @@ public sealed class TicketService : ITicketService
             ticket.CreatedByUserId,
             ticketCreator.FullName,
             ticket.AssignedTechnicianId,
-            ticket.AssignedTechnician?.FullName,
+            ticketAssignedTechnician?.FullName,
             ticket.WaitingReason,
             ticket.ResolutionDescription,
             ticket.CreatedAt,

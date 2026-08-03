@@ -106,4 +106,98 @@ public sealed class TicketBehaviorTests
                 description,
                 TicketPriority.Low));
     }
+
+    [Fact]
+    public void Assign_WithValidIds_AssignsTicketAndCreatesHistory()
+    {
+        var ticket = CreateTicket();
+        var technicianId = Guid.NewGuid();
+        var performedByUserId = Guid.NewGuid();
+        var beforeAssignment = DateTime.UtcNow;
+
+        ticket.Assign(
+            technicianId,
+            performedByUserId);
+
+        var afterAssignment = DateTime.UtcNow;
+
+        Assert.Equal(
+            technicianId,
+            ticket.AssignedTechnicianId);
+
+        Assert.Equal(TicketStatus.Assigned, ticket.Status);
+        Assert.NotNull(ticket.UpdatedAt);
+
+        Assert.InRange(
+            ticket.UpdatedAt.Value,
+            beforeAssignment,
+            afterAssignment);
+
+        Assert.Equal(
+            DateTimeKind.Utc,
+            ticket.UpdatedAt.Value.Kind);
+
+        var history = Assert.Single(ticket.Histories);
+
+        Assert.Equal(ticket.Id, history.TicketId);
+        Assert.Equal(performedByUserId, history.PerformedByUserId);
+        Assert.Equal(TicketStatus.Open, history.OldStatus);
+        Assert.Equal(TicketStatus.Assigned, history.NewStatus);
+        Assert.Equal("Talep teknik personele atandı.", history.Description);
+    }
+
+    [Fact]
+    public void Assign_WithEmptyTechnicianId_ThrowsArgumentException()
+    {
+        var ticket = CreateTicket();
+
+        Assert.Throws<ArgumentException>(
+            () => ticket.Assign(
+                Guid.Empty,
+                Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void Assign_WithEmptyPerformedByUserId_ThrowsArgumentException()
+    {
+        var ticket = CreateTicket();
+
+        Assert.Throws<ArgumentException>(
+            () => ticket.Assign(
+                Guid.NewGuid(),
+                Guid.Empty));
+    }
+
+    [Fact]
+    public void Assign_WhenTicketIsAlreadyAssigned_ThrowsArgumentException()
+    {
+        var ticket = CreateTicket();
+        var firstTechnicianId = Guid.NewGuid();
+
+        ticket.Assign(
+            firstTechnicianId,
+            Guid.NewGuid());
+
+        Assert.Throws<ArgumentException>(
+            () => ticket.Assign(
+                Guid.NewGuid(),
+                Guid.NewGuid()));
+
+        Assert.Equal(
+            firstTechnicianId,
+            ticket.AssignedTechnicianId);
+
+        Assert.Equal(TicketStatus.Assigned, ticket.Status);
+        Assert.Single(ticket.Histories);
+    }
+
+    private static Ticket CreateTicket()
+    {
+        return new Ticket(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Test talebi",
+            "Test açıklaması",
+            TicketPriority.Medium);
+    }
 }

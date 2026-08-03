@@ -86,6 +86,40 @@ public sealed class TicketsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPatch("{id:guid}/assignment")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ProducesResponseType(
+    typeof(TicketDto),
+    StatusCodes.Status200OK)]
+    [ProducesResponseType(
+    StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+    StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+    StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> Assign(
+    Guid id,
+    AssignTicketRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.AssignAsync(
+                id,
+                userId,
+                role,
+                request,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(
         typeof(TicketDto),

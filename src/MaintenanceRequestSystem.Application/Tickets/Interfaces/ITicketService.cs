@@ -11,6 +11,13 @@ public interface ITicketService
         CreateTicketRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<TicketDto> AssignAsync(
+    Guid id,
+    Guid currentUserId,
+    UserRole currentUserRole,
+    AssignTicketRequest request,
+    CancellationToken cancellationToken = default);
+
     Task<TicketDto> GetByIdAsync(
         Guid id,
         Guid currentUserId,

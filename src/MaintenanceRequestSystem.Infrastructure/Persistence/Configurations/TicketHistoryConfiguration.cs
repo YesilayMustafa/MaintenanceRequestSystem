@@ -18,7 +18,8 @@ public sealed class TicketHistoryConfiguration
         builder.HasKey(history => history.Id);
 
         builder.Property(history => history.Id)
-            .HasColumnName("id");
+            .HasColumnName("id")
+            .ValueGeneratedNever();
 
         builder.Property(history => history.TicketId)
             .HasColumnName("ticket_id")

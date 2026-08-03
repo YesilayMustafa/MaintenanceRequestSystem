@@ -81,6 +81,34 @@ public sealed class Ticket
     public ICollection<TicketHistory> Histories { get; private set; }
         = new List<TicketHistory>();
 
+    public void Assign(
+        Guid technicianId,
+        Guid performedByUserId)
+    {
+        EnsureValidTechnicianId(technicianId);
+        EnsureValidPerformedByUserId(performedByUserId);
+
+        if (Status != TicketStatus.Open)
+        {
+            throw new ArgumentException(
+                "Yalnızca açık durumdaki talepler atanabilir.");
+        }
+
+        var oldStatus = Status;
+
+        AssignedTechnicianId = technicianId;
+        Status = TicketStatus.Assigned;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                "Talep teknik personele atandı."));
+    }
+
     private static string NormalizeTitle(string title)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -157,6 +185,28 @@ public sealed class Ticket
             throw new ArgumentOutOfRangeException(
                 nameof(priority),
                 "Geçersiz talep önceliği.");
+        }
+    }
+
+    private static void EnsureValidTechnicianId(
+        Guid technicianId)
+    {
+        if (technicianId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir teknik personel kimliği gereklidir.",
+                nameof(technicianId));
+        }
+    }
+
+    private static void EnsureValidPerformedByUserId(
+        Guid performedByUserId)
+    {
+        if (performedByUserId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir işlemi yapan kullanıcı kimliği gereklidir.",
+                nameof(performedByUserId));
         }
     }
 }
