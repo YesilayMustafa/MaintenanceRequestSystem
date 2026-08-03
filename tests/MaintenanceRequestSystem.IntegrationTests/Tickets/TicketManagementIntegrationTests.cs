@@ -23,7 +23,6 @@ public sealed class TicketManagementIntegrationTests
 {
     private readonly HttpClient _client;
     private readonly CustomWebApplicationFactory _factory;
-
     public TicketManagementIntegrationTests(
         CustomWebApplicationFactory factory)
     {
@@ -531,6 +530,28 @@ public sealed class TicketManagementIntegrationTests
 
         Assert.Equal(
             HttpStatusCode.NotFound,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTickets_WithUndefinedStatus_ReturnsBadRequest()
+    {
+        var adminToken =
+            await LoginAsync(
+                CustomWebApplicationFactory.AdminEmail,
+                CustomWebApplicationFactory.AdminPassword);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                "/api/tickets?pageNumber=1&pageSize=10&status=999",
+                adminToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
             response.StatusCode);
     }
 

@@ -1,14 +1,20 @@
-﻿using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using MaintenanceRequestSystem.Application.Assets.Dtos;
+﻿using MaintenanceRequestSystem.Application.Assets.Dtos;
 using MaintenanceRequestSystem.Application.Authentication.Dtos;
 using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.TicketComments.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Infrastructure.Authentication;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Security.Claims;
 
 namespace MaintenanceRequestSystem.IntegrationTests.TicketComments;
 
@@ -16,10 +22,12 @@ public sealed class TicketCommentIntegrationTests
     : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public TicketCommentIntegrationTests(
         CustomWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -38,6 +46,8 @@ public sealed class TicketCommentIntegrationTests
             HttpStatusCode.Unauthorized,
             response.StatusCode);
     }
+
+
 
     [Fact]
     public async Task CreateComment_WithTicketOwnerToken_ReturnsCreated()
@@ -139,6 +149,28 @@ public sealed class TicketCommentIntegrationTests
                         "Başka çalışan tarafından eklenmeye çalışılan yorum."
                 });
 
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetComments_WithUnsupportedRoleToken_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var accessToken =
+            CreateTokenWithRole("999");
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}/comments",
+                accessToken);
         var response =
             await _client.SendAsync(request);
 
@@ -435,6 +467,60 @@ public sealed class TicketCommentIntegrationTests
         }
 
         return request;
+    }
+
+    private string CreateTokenWithRole(
+    string role)
+    {
+        var options =
+            _factory.Services
+                .GetRequiredService<IOptions<JwtOptions>>()
+                .Value;
+
+        var signingKey =
+            new SymmetricSecurityKey(
+                Convert.FromBase64String(
+                    options.SigningKey));
+
+        var credentials =
+            new SigningCredentials(
+                signingKey,
+                SecurityAlgorithms.HmacSha256);
+
+        var now = DateTime.UtcNow;
+
+        var token =
+            new JwtSecurityToken(
+                issuer: options.Issuer,
+                audience: options.Audience,
+                claims:
+                [
+                    new Claim(
+                    JwtRegisteredClaimNames.Sub,
+                    Guid.NewGuid().ToString()),
+
+                new Claim(
+                    JwtRegisteredClaimNames.Name,
+                    "Desteklenmeyen Rol Kullanıcısı"),
+
+                new Claim(
+                    JwtRegisteredClaimNames.Email,
+                    "unsupported-role@example.com"),
+
+                new Claim(
+                    "role",
+                    role),
+
+                new Claim(
+                    JwtRegisteredClaimNames.Jti,
+                    Guid.NewGuid().ToString())
+                ],
+                notBefore: now,
+                expires: now.AddMinutes(5),
+                signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler()
+            .WriteToken(token);
     }
 
     private sealed record CommentSetup(

@@ -101,6 +101,30 @@ public sealed class TicketServiceTests
     }
 
     [Fact]
+    public async Task GetPagedAsync_WithUndefinedStatus_ThrowsValidationException()
+    {
+        var service =
+            new TicketService(
+                new FakeTicketRepository(),
+                new FakeAssetRepository(),
+                new FakeUserRepository());
+
+        var query =
+            new TicketListQuery
+            {
+                PageNumber = 1,
+                PageSize = 10,
+                Status = (TicketStatus)999
+            };
+
+        await Assert.ThrowsAsync<RequestValidationException>(
+            () => service.GetPagedAsync(
+                Guid.NewGuid(),
+                UserRole.Admin,
+                query));
+    }
+
+    [Fact]
     public async Task GetPagedAsync_WithOverflowingOffset_ThrowsValidationException()
     {
         var service =

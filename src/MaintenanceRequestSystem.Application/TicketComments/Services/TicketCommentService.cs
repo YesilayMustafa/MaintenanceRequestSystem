@@ -171,10 +171,12 @@ public sealed class TicketCommentService
     private static void EnsureValidRole(
         UserRole role)
     {
-        if (!Enum.IsDefined(role))
+        if (!Enum.IsDefined(
+                typeof(UserRole),
+                role))
         {
-            throw new RequestValidationException(
-                "Geçersiz kullanıcı rolü.");
+            throw new ForbiddenException(
+                "Desteklenmeyen kullanıcı rolü.");
         }
     }
 

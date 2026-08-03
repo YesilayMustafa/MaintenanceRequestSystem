@@ -10,7 +10,11 @@ namespace MaintenanceRequestSystem.Api.Controllers;
 
 [ApiController]
 [Route("api/tickets/{ticketId:guid}/comments")]
-[Authorize]
+[Authorize(
+    Roles =
+        nameof(UserRole.Employee) + "," +
+        nameof(UserRole.Technician) + "," +
+        nameof(UserRole.Admin))]
 public sealed class TicketCommentsController
     : ControllerBase
 {
@@ -106,10 +110,13 @@ public sealed class TicketCommentsController
                 out userId);
 
         var validRole =
-            Enum.TryParse(
+            Enum.TryParse<UserRole>(
                 roleValue,
                 ignoreCase: true,
-                out role);
+                out role) &&
+            Enum.IsDefined(
+                typeof(UserRole),
+                role);
 
         return validUserId && validRole;
     }

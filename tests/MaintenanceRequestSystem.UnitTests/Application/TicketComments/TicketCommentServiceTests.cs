@@ -136,6 +136,22 @@ public sealed class TicketCommentServiceTests
     }
 
     [Fact]
+    public async Task GetByTicketIdAsync_WithUnsupportedRole_ThrowsForbiddenException()
+    {
+        var service =
+            new TicketCommentService(
+                new FakeTicketCommentRepository(),
+                new FakeTicketRepository(),
+                new FakeUserRepository());
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => service.GetByTicketIdAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                (UserRole)999));
+    }
+
+    [Fact]
     public async Task CreateAsync_WithMissingUser_ThrowsKeyNotFoundException()
     {
         var ticket =

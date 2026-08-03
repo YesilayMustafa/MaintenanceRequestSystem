@@ -235,8 +235,8 @@ public sealed class TicketService : ITicketService
     TicketListQuery query)
     {
         if (!Enum.IsDefined(
-        typeof(UserRole),
-        currentUserRole))
+                typeof(UserRole),
+                currentUserRole))
         {
             throw new ForbiddenException(
                 "Desteklenmeyen kullanıcı rolü.");
@@ -263,16 +263,18 @@ public sealed class TicketService : ITicketService
                 "İstenen sayfa numarası desteklenen sınırı aşıyor.");
         }
 
-        if (!Enum.IsDefined(
-        typeof(UserRole),
-        currentUserRole))
+        if (query.Status.HasValue &&
+    !Enum.IsDefined(
+        typeof(TicketStatus),
+        query.Status.Value))
         {
-            throw new ForbiddenException(
-                "Desteklenmeyen kullanıcı rolü.");
+            throw new RequestValidationException(
+                "Geçersiz talep durumu.");
         }
-
         if (query.Priority.HasValue &&
-            !Enum.IsDefined(query.Priority.Value))
+            !Enum.IsDefined(
+                typeof(TicketPriority),
+                query.Priority.Value))
         {
             throw new RequestValidationException(
                 "Geçersiz talep önceliği.");

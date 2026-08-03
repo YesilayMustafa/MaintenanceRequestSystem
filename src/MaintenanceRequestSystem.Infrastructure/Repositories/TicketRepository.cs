@@ -70,10 +70,12 @@ public sealed class TicketRepository : ITicketRepository
                 query.SortBy,
                 query.SortDescending);
 
+        var offset =
+            ((long)query.PageNumber - 1L) *
+            query.PageSize;
+
         var skip =
-    (int)(
-        ((long)query.PageNumber - 1L) *
-        query.PageSize);
+            checked((int)offset);
 
         var items =
             await ticketQuery
