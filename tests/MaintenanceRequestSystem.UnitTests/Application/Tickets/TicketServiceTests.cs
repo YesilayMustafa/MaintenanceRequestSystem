@@ -125,6 +125,153 @@ public sealed class TicketServiceTests
     }
 
     [Fact]
+    public async Task ReassignAsync_WithValidRequest_ReassignsAndSavesTicket()
+    {
+        var creator = CreateUser();
+        var firstTechnician = CreateTechnician();
+        var secondTechnician = CreateTechnician();
+        var asset = CreateAsset();
+        var adminId = Guid.NewGuid();
+
+        var ticket =
+            new Ticket(
+                asset.Id,
+                creator.Id,
+                "Bilgisayar açılmıyor",
+                "Cihaz açılmıyor.",
+                TicketPriority.High);
+
+        SetTicketNavigationProperties(
+            ticket,
+            asset,
+            creator);
+
+        ticket.Assign(
+            firstTechnician.Id,
+            adminId);
+
+        var ticketRepository =
+            new FakeTicketRepository
+            {
+                TicketById = ticket
+            };
+
+        var service =
+            new TicketService(
+                ticketRepository,
+                new FakeAssetRepository(),
+                new FakeUserRepository
+                {
+                    UserById = secondTechnician
+                });
+
+        var result =
+            await service.ReassignAsync(
+                ticket.Id,
+                adminId,
+                UserRole.Admin,
+                new AssignTicketRequest
+                {
+                    TechnicianId = secondTechnician.Id
+                });
+
+        Assert.Equal(
+            secondTechnician.Id,
+            ticket.AssignedTechnicianId);
+
+        Assert.Equal(
+            TicketStatus.Assigned,
+            ticket.Status);
+
+        Assert.Equal(
+            1,
+            ticketRepository.SaveChangesCallCount);
+
+        Assert.Equal(
+            secondTechnician.Id,
+            result.AssignedTechnicianId);
+
+        Assert.Equal(
+            secondTechnician.FullName,
+            result.AssignedTechnicianFullName);
+
+        Assert.Equal(
+            2,
+            ticket.Histories.Count);
+    }
+
+    [Fact]
+    public async Task ReassignAsync_WhenCurrentUserIsNotAdmin_ThrowsForbiddenException()
+    {
+        var ticketRepository =
+            new FakeTicketRepository();
+
+        var service =
+            new TicketService(
+                ticketRepository,
+                new FakeAssetRepository(),
+                new FakeUserRepository());
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => service.ReassignAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                UserRole.Technician,
+                new AssignTicketRequest
+                {
+                    TechnicianId = Guid.NewGuid()
+                }));
+
+        Assert.Equal(
+            0,
+            ticketRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ReassignAsync_WhenTicketIsOpen_ThrowsArgumentException()
+    {
+        var creator = CreateUser();
+        var technician = CreateTechnician();
+
+        var ticket =
+            new Ticket(
+                Guid.NewGuid(),
+                creator.Id,
+                "Bilgisayar açılmıyor",
+                "Cihaz açılmıyor.",
+                TicketPriority.High);
+
+        var ticketRepository =
+            new FakeTicketRepository
+            {
+                TicketById = ticket
+            };
+
+        var service =
+            new TicketService(
+                ticketRepository,
+                new FakeAssetRepository(),
+                new FakeUserRepository
+                {
+                    UserById = technician
+                });
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.ReassignAsync(
+                ticket.Id,
+                Guid.NewGuid(),
+                UserRole.Admin,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                }));
+
+        Assert.Equal(
+            0,
+            ticketRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
     public async Task GetPagedAsync_WithOverflowingOffset_ThrowsValidationException()
     {
         var service =

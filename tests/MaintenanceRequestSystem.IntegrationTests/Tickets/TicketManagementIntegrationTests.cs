@@ -92,6 +92,167 @@ public sealed class TicketManagementIntegrationTests
     }
 
     [Fact]
+    public async Task ReassignTicket_WithAdminToken_ReturnsReassignedTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var firstTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var secondTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = firstTechnician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        using var reassignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/reassignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = secondTechnician.Id
+                });
+
+        var reassignResponse =
+            await _client.SendAsync(reassignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            reassignResponse.StatusCode);
+
+        var ticket =
+            await reassignResponse.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+
+        Assert.Equal(
+            "Assigned",
+            ticket.Status);
+
+        Assert.Equal(
+            secondTechnician.Id,
+            ticket.AssignedTechnicianId);
+
+        Assert.Equal(
+            "Test Teknik Personeli",
+            ticket.AssignedTechnicianFullName);
+    }
+
+    [Fact]
+    public async Task ReassignTicket_WithEmployeeToken_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var firstTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var secondTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = firstTechnician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        using var reassignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/reassignment",
+                setup.EmployeeToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = secondTechnician.Id
+                });
+
+        var response =
+            await _client.SendAsync(reassignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReassignTicket_WithSameTechnician_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var requestBody =
+            new AssignTicketRequest
+            {
+                TechnicianId = technician.Id
+            };
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                requestBody);
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        using var reassignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/reassignment",
+                setup.AdminToken,
+                requestBody);
+
+        var response =
+            await _client.SendAsync(reassignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetTickets_WithPagination_ReturnsCorrectPages()
     {
         var adminToken =

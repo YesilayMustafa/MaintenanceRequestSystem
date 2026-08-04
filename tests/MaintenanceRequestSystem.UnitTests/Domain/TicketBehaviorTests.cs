@@ -91,6 +91,121 @@ public sealed class TicketBehaviorTests
     }
 
     [Fact]
+    public void Reassign_WhenTicketIsAssigned_ChangesTechnicianAndAddsHistory()
+    {
+        var ticket =
+            new Ticket(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "Bilgisayar açılmıyor",
+                "Cihaz açılmıyor.",
+                TicketPriority.High);
+
+        var firstTechnicianId =
+            Guid.NewGuid();
+
+        var secondTechnicianId =
+            Guid.NewGuid();
+
+        var adminId =
+            Guid.NewGuid();
+
+        ticket.Assign(
+            firstTechnicianId,
+            adminId);
+
+        var previousUpdatedAt =
+            ticket.UpdatedAt;
+
+        ticket.Reassign(
+            secondTechnicianId,
+            adminId);
+
+        Assert.Equal(
+            secondTechnicianId,
+            ticket.AssignedTechnicianId);
+
+        Assert.Equal(
+            TicketStatus.Assigned,
+            ticket.Status);
+
+        Assert.True(
+            ticket.UpdatedAt >= previousUpdatedAt);
+
+        Assert.Equal(
+            2,
+            ticket.Histories.Count);
+
+        var history =
+            ticket.Histories.Last();
+
+        Assert.Equal(
+            TicketStatus.Assigned,
+            history.OldStatus);
+
+        Assert.Equal(
+            TicketStatus.Assigned,
+            history.NewStatus);
+
+        Assert.Equal(
+            adminId,
+            history.PerformedByUserId);
+    }
+
+    [Fact]
+    public void Reassign_WithSameTechnician_ThrowsArgumentException()
+    {
+        var ticket =
+            new Ticket(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "Bilgisayar açılmıyor",
+                "Cihaz açılmıyor.",
+                TicketPriority.High);
+
+        var technicianId =
+            Guid.NewGuid();
+
+        var adminId =
+            Guid.NewGuid();
+
+        ticket.Assign(
+            technicianId,
+            adminId);
+
+        Assert.Throws<ArgumentException>(
+            () => ticket.Reassign(
+                technicianId,
+                adminId));
+
+        Assert.Single(
+            ticket.Histories);
+    }
+
+    [Fact]
+    public void Reassign_WhenTicketIsOpen_ThrowsArgumentException()
+    {
+        var ticket =
+            new Ticket(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "Bilgisayar açılmıyor",
+                "Cihaz açılmıyor.",
+                TicketPriority.High);
+
+        Assert.Throws<ArgumentException>(
+            () => ticket.Reassign(
+                Guid.NewGuid(),
+                Guid.NewGuid()));
+
+        Assert.Null(
+            ticket.AssignedTechnicianId);
+
+        Assert.Empty(
+            ticket.Histories);
+    }
+
+    [Fact]
     public void Constructor_WithTooLongDescription_ThrowsArgumentException()
     {
         var description =
