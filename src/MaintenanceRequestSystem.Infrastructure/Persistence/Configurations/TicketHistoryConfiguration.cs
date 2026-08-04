@@ -8,17 +8,25 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace MaintenanceRequestSystem.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Ticket history kayıtlarının EF Core tablo, alan ve ilişki eşlemelerini tanımlar.
+/// </summary>
 public sealed class TicketHistoryConfiguration
     : IEntityTypeConfiguration<TicketHistory>
 {
+    /// <summary>
+    /// TicketHistory entity'sinin kalıcılık modelini yapılandırır.
+    /// </summary>
     public void Configure(EntityTypeBuilder<TicketHistory> builder)
     {
         builder.ToTable("ticket_histories");
 
         builder.HasKey(history => history.Id);
 
+        // Kimlik domain constructor'ında üretildiği için EF Core bu kaydı mevcut entity güncellemesi sanmamalıdır.
         builder.Property(history => history.Id)
-            .HasColumnName("id");
+            .HasColumnName("id")
+            .ValueGeneratedNever();
 
         builder.Property(history => history.TicketId)
             .HasColumnName("ticket_id")

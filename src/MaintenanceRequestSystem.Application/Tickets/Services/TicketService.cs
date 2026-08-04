@@ -9,12 +9,18 @@ using MaintenanceRequestSystem.Application.Common.Models;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
 
+/// <summary>
+/// Ticket use case'lerini, yetki kontrollerini ve repository koordinasyonunu yürütür.
+/// </summary>
 public sealed class TicketService : ITicketService
 {
     private readonly ITicketRepository _ticketRepository;
     private readonly IAssetRepository _assetRepository;
     private readonly IUserRepository _userRepository;
 
+    /// <summary>
+    /// Ticket servisini gerekli repository bağımlılıklarıyla oluşturur.
+    /// </summary>
     public TicketService(
         ITicketRepository ticketRepository,
         IAssetRepository assetRepository,
@@ -25,6 +31,9 @@ public sealed class TicketService : ITicketService
         _userRepository = userRepository;
     }
 
+    /// <summary>
+    /// Ticket listesini rol bazlı kapsam, filtre, sıralama ve sayfalama ile getirir.
+    /// </summary>
     public async Task<PagedResult<TicketDto>> GetPagedAsync(
     Guid currentUserId,
     UserRole currentUserRole,
@@ -68,6 +77,9 @@ public sealed class TicketService : ITicketService
             totalPages);
     }
 
+    /// <summary>
+    /// Aktif kullanıcı ve cihaz doğrulamalarından sonra yeni ticket oluşturur.
+    /// </summary>
     public async Task<TicketDto> CreateAsync(
         Guid createdByUserId,
         CreateTicketRequest request,
@@ -137,6 +149,171 @@ public sealed class TicketService : ITicketService
             user);
     }
 
+    /// <summary>
+    /// Yalnızca Admin adına açık bir ticket'ı ilk kez aktif bir Technician kullanıcısına atar.
+    /// Domain davranışı durum geçişini ve history kaydını birlikte gerçekleştirir.
+    /// </summary>
+    public async Task<TicketDto> AssignAsync(
+    Guid id,
+    Guid currentUserId,
+    UserRole currentUserRole,
+    AssignTicketRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        // Yetki ve hedef kullanıcı uygunluğu, domain state'i değişmeden önce tamamen doğrulanır.
+        if (currentUserRole != UserRole.Admin)
+        {
+            throw new ForbiddenException(
+                "Yalnızca yöneticiler talep atayabilir.");
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        EnsureValidId(
+            request.TechnicianId,
+            "Geçerli bir teknik personel kimliği gereklidir.");
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var technician =
+            await _userRepository.GetByIdAsync(
+                request.TechnicianId,
+                cancellationToken);
+
+        if (technician is null)
+        {
+            throw new KeyNotFoundException(
+                "Teknik personel bulunamadı.");
+        }
+
+        if (!technician.IsActive)
+        {
+            throw new RequestValidationException(
+                "Pasif bir kullanıcıya talep atanamaz.");
+        }
+
+        if (technician.Role != UserRole.Technician)
+        {
+            throw new RequestValidationException(
+                "Talep yalnızca teknik personel rolündeki kullanıcıya atanabilir.");
+        }
+
+        ticket.Assign(
+            technician.Id,
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(
+            ticket,
+            assignedTechnician: technician);
+    }
+
+    /// <summary>
+    /// Yalnızca Admin adına atanmış bir ticket'ı farklı ve aktif bir Technician kullanıcısına yeniden atar.
+    /// Durum Assigned kalırken atama değişikliği ve history domain içinde birlikte güncellenir.
+    /// </summary>
+    public async Task<TicketDto> ReassignAsync(
+    Guid id,
+    Guid currentUserId,
+    UserRole currentUserRole,
+    AssignTicketRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        // Yetki ve hedef kullanıcı uygunluğu, mevcut atama değiştirilmeden önce tamamen doğrulanır.
+        if (currentUserRole != UserRole.Admin)
+        {
+            throw new ForbiddenException(
+                "Yalnızca yöneticiler talepleri yeniden atayabilir.");
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        EnsureValidId(
+            request.TechnicianId,
+            "Geçerli bir teknik personel kimliği gereklidir.");
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var technician =
+            await _userRepository.GetByIdAsync(
+                request.TechnicianId,
+                cancellationToken);
+
+        if (technician is null)
+        {
+            throw new KeyNotFoundException(
+                "Teknik personel bulunamadı.");
+        }
+
+        if (!technician.IsActive)
+        {
+            throw new RequestValidationException(
+                "Pasif bir kullanıcıya talep atanamaz.");
+        }
+
+        if (technician.Role != UserRole.Technician)
+        {
+            throw new RequestValidationException(
+                "Talep yalnızca teknik personel rolündeki kullanıcıya atanabilir.");
+        }
+
+        ticket.Reassign(
+            technician.Id,
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(
+            ticket,
+            assignedTechnician: technician);
+    }
+
+
+
+    /// <summary>
+    /// Rol bazlı erişim kuralını uygulayarak ticket detayını getirir.
+    /// </summary>
     public async Task<TicketDto> GetByIdAsync(
     Guid id,
     Guid currentUserId,
@@ -200,8 +377,13 @@ public sealed class TicketService : ITicketService
     private static TicketDto MapToDto(
         Ticket ticket,
         Asset? asset = null,
-        User? createdByUser = null)
+        User? createdByUser = null,
+        User? assignedTechnician = null)
     {
+
+        var ticketAssignedTechnician =
+    assignedTechnician ??
+    ticket.AssignedTechnician;
         var ticketAsset =
             asset ?? ticket.Asset;
 
@@ -220,7 +402,7 @@ public sealed class TicketService : ITicketService
             ticket.CreatedByUserId,
             ticketCreator.FullName,
             ticket.AssignedTechnicianId,
-            ticket.AssignedTechnician?.FullName,
+            ticketAssignedTechnician?.FullName,
             ticket.WaitingReason,
             ticket.ResolutionDescription,
             ticket.CreatedAt,

@@ -2,6 +2,9 @@
 
 namespace MaintenanceRequestSystem.Domain.Entities;
 
+/// <summary>
+/// Bir bakım talebinin durumunu, atamasını ve değişiklik geçmişini yöneten domain varlığıdır.
+/// </summary>
 public sealed class Ticket
 {
     public const int MaxTitleLength = 200;
@@ -14,6 +17,9 @@ public sealed class Ticket
         // Entity Framework Core tarafından kullanılacak.
     }
 
+    /// <summary>
+    /// Yeni bir talebi açık durumda oluşturur.
+    /// </summary>
     public Ticket(
         Guid assetId,
         Guid createdByUserId,
@@ -80,6 +86,85 @@ public sealed class Ticket
 
     public ICollection<TicketHistory> Histories { get; private set; }
         = new List<TicketHistory>();
+
+    /// <summary>
+    /// Açık bir talebi ilk kez teknik personele atar ve Open → Assigned geçmişini oluşturur.
+    /// Application katmanı bu davranışı yalnızca Admin adına ve aktif Technician hedefi için çağırmalıdır;
+    /// sonraki atamalar <see cref="Reassign"/> ile yapılır.
+    /// </summary>
+    /// <remarks>
+    /// Durum geçişi ile history kaydı aynı domain işleminin parçasıdır; böylece güncel durum ve audit izi ayrışmaz.
+    /// </remarks>
+    public void Assign(
+        Guid technicianId,
+        Guid performedByUserId)
+    {
+        EnsureValidTechnicianId(technicianId);
+        EnsureValidPerformedByUserId(performedByUserId);
+
+        // İlk atama yalnızca Open durumundan yapılabilir; atanmış talepler Reassign ile yönetilir.
+        if (Status != TicketStatus.Open)
+        {
+            throw new ArgumentException(
+                "Yalnızca açık durumdaki talepler atanabilir.");
+        }
+
+        var oldStatus = Status;
+
+        // Durum geçişi ve history aynı aggregate işleminde tutularak audit izinin state ile uyumu korunur.
+        AssignedTechnicianId = technicianId;
+        Status = TicketStatus.Assigned;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                "Talep teknik personele atandı."));
+    }
+
+    /// <summary>
+    /// Atanmış bir talebin teknisyenini değiştirir ve atanan kişi değişikliğini history kaydına ekler.
+    /// Application katmanı bu davranışı yalnızca Admin adına ve farklı, aktif bir Technician hedefi için çağırmalıdır.
+    /// </summary>
+    /// <remarks>
+    /// İlk atamadan farklı olarak durum Assigned kalır; atama değişikliği ile history aynı işlemde kaydedilir.
+    /// </remarks>
+    public void Reassign(
+    Guid technicianId,
+    Guid performedByUserId)
+    {
+        EnsureValidTechnicianId(technicianId);
+        EnsureValidPerformedByUserId(performedByUserId);
+
+        // Yeniden atama yalnızca ilk ataması tamamlanmış taleplerde anlamlıdır.
+        if (Status != TicketStatus.Assigned)
+        {
+            throw new ArgumentException(
+                "Yalnızca atanmış durumdaki talepler yeniden atanabilir.");
+        }
+
+        if (AssignedTechnicianId == technicianId)
+        {
+            throw new ArgumentException(
+                "Talep zaten bu teknik personele atanmış.");
+        }
+
+        var oldStatus = Status;
+
+        AssignedTechnicianId = technicianId;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                "Talep başka bir teknik personele yeniden atandı."));
+    }
 
     private static string NormalizeTitle(string title)
     {
@@ -157,6 +242,28 @@ public sealed class Ticket
             throw new ArgumentOutOfRangeException(
                 nameof(priority),
                 "Geçersiz talep önceliği.");
+        }
+    }
+
+    private static void EnsureValidTechnicianId(
+        Guid technicianId)
+    {
+        if (technicianId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir teknik personel kimliği gereklidir.",
+                nameof(technicianId));
+        }
+    }
+
+    private static void EnsureValidPerformedByUserId(
+        Guid performedByUserId)
+    {
+        if (performedByUserId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir işlemi yapan kullanıcı kimliği gereklidir.",
+                nameof(performedByUserId));
         }
     }
 }
