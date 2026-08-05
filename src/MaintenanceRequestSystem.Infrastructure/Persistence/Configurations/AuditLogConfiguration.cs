@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
+﻿
 using MaintenanceRequestSystem.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -18,7 +15,8 @@ public sealed class AuditLogConfiguration
         builder.HasKey(auditLog => auditLog.Id);
 
         builder.Property(auditLog => auditLog.Id)
-            .HasColumnName("id");
+            .HasColumnName("id")
+            .ValueGeneratedNever();
 
         builder.Property(auditLog => auditLog.PerformedByUserId)
             .HasColumnName("performed_by_user_id")

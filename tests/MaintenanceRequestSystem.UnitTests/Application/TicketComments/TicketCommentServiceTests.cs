@@ -315,6 +315,14 @@ public sealed class TicketCommentServiceTests
     private sealed class FakeTicketRepository
         : ITicketRepository
     {
+
+        public Task<IReadOnlyList<TicketHistory>> GetHistoriesAsync(
+    Guid ticketId,
+    CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<TicketHistory>>(
+                Array.Empty<TicketHistory>());
+        }
         public Ticket? TicketById { get; init; }
 
         public Task<(

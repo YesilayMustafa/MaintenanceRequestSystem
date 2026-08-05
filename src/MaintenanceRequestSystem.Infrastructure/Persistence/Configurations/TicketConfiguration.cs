@@ -100,5 +100,20 @@ public sealed class TicketConfiguration
             .WithMany(user => user.AssignedTickets)
             .HasForeignKey(ticket => ticket.AssignedTechnicianId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(ticket => ticket.IsDeleted)
+            .HasColumnName("is_deleted")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(ticket => ticket.DeletedAt)
+            .HasColumnName("deleted_at");
+
+        builder.Property(ticket => ticket.DeletedByUserId)
+            .HasColumnName("deleted_by_user_id");
+
+        builder.HasIndex(ticket => ticket.IsDeleted);
+
+        builder.HasQueryFilter(ticket => !ticket.IsDeleted);
     }
 }

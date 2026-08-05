@@ -15,6 +15,9 @@ public sealed class TicketCommentConfiguration
     {
         builder.ToTable("ticket_comments");
 
+        builder.HasQueryFilter(
+            comment => !comment.Ticket.IsDeleted);
+
         builder.HasKey(comment => comment.Id);
 
         builder.Property(comment => comment.Id)
@@ -57,4 +60,4 @@ public sealed class TicketCommentConfiguration
             .HasForeignKey(comment => comment.UserId)
             .OnDelete(DeleteBehavior.Restrict);
     }
-}  
+}
