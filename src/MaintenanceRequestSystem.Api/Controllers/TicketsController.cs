@@ -138,6 +138,379 @@ public sealed class TicketsController : ControllerBase
     }
 
     /// <summary>
+    /// Talebe atanmış teknik personelin çalışmayı başlatmasını sağlar.
+    /// Kullanıcı kimliği ve rolü JWT claim'lerinden alınır.
+    /// </summary>
+    [HttpPatch("{id:guid}/start-progress")]
+    [Authorize(Roles = nameof(UserRole.Technician))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> StartProgress(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.StartProgressAsync(
+                id,
+                userId,
+                role,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// İşlemdeki talebi, request body'deki gerekçeyle beklemeye alır.
+    /// İşlemi yalnızca talebe atanmış aktif teknik personel yapabilir.
+    /// </summary>
+    [HttpPatch("{id:guid}/put-on-hold")]
+    [Authorize(Roles = nameof(UserRole.Technician))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> PutOnHold(
+        Guid id,
+        PutTicketOnHoldRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.PutOnHoldAsync(
+                id,
+                userId,
+                role,
+                request,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// İşlemdeki talebi, request body'deki çözüm açıklamasıyla
+    /// Resolved durumuna geçirir.
+    /// İşlemi yalnızca talebe atanmış aktif teknik personel yapabilir.
+    /// </summary>
+    [HttpPatch("{id:guid}/resolve")]
+    [Authorize(Roles = nameof(UserRole.Technician))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> Resolve(
+        Guid id,
+        ResolveTicketRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.ResolveAsync(
+                id,
+                userId,
+                role,
+                request,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// Çözümlenmiş talebi kapatır.
+    /// İşlemi yalnızca talep sahibi Employee veya Admin yapabilir.
+    /// </summary>
+    [HttpPatch("{id:guid}/close")]
+    [Authorize(
+        Roles =
+            nameof(UserRole.Employee) + "," +
+            nameof(UserRole.Admin))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> Close(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.CloseAsync(
+                id,
+                userId,
+                role,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// Kapatılmış talebi, belirtilen gerekçeyle yeniden işleme alır.
+    /// İşlemi yalnızca talep sahibi Employee veya Admin yapabilir.
+    /// </summary>
+    [HttpPatch("{id:guid}/reopen")]
+    [Authorize(
+        Roles =
+            nameof(UserRole.Employee) + "," +
+            nameof(UserRole.Admin))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> Reopen(
+        Guid id,
+        ReopenTicketRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.ReopenAsync(
+                id,
+                userId,
+                role,
+                request,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// İptale uygun talebi Cancelled durumuna geçirir.
+    /// Talep sahibi yalnızca Open talebini, Admin ise Open,
+    /// Assigned veya Waiting talebi iptal edebilir.
+    /// </summary>
+    [HttpPatch("{id:guid}/cancel")]
+    [Authorize(
+        Roles =
+            nameof(UserRole.Employee) + "," +
+            nameof(UserRole.Admin))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> Cancel(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.CancelAsync(
+                id,
+                userId,
+                role,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// Aktif durumdaki talebin önceliğini değiştirir.
+    /// İşlemi yalnızca aktif Admin yapabilir.
+    /// </summary>
+    [HttpPatch("{id:guid}/priority")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> ChangePriority(
+        Guid id,
+        ChangeTicketPriorityRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.ChangePriorityAsync(
+                id,
+                userId,
+                role,
+                request,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
+    /// Kullanıcının erişim yetkisi bulunan talebin
+    /// durum değişikliği geçmişini getirir.
+    /// </summary>
+    [HttpGet("{id:guid}/history")]
+    [Authorize(
+        Roles =
+            nameof(UserRole.Employee) + "," +
+            nameof(UserRole.Technician) + "," +
+            nameof(UserRole.Admin))]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<TicketHistoryDto>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<TicketHistoryDto>>> GetHistory(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var histories =
+            await _ticketService.GetHistoryAsync(
+                id,
+                userId,
+                role,
+                cancellationToken);
+
+        return Ok(histories);
+    }
+
+    /// <summary>
+    /// Kapatılmış veya iptal edilmiş talebi soft delete ile pasifleştirir.
+    /// İşlemi yalnızca aktif Admin yapabilir.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SoftDelete(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        await _ticketService.SoftDeleteAsync(
+            id,
+            userId,
+            role,
+            cancellationToken);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Beklemedeki talebi yeniden işleme alır.
+    /// İşlemi yalnızca talebe atanmış aktif teknik personel yapabilir.
+    /// </summary>
+    [HttpPatch("{id:guid}/resume")]
+    [Authorize(Roles = nameof(UserRole.Technician))]
+    [ProducesResponseType(
+        typeof(TicketDto),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TicketDto>> Resume(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(
+                out var userId,
+                out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket =
+            await _ticketService.ResumeAsync(
+                id,
+                userId,
+                role,
+                cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    /// <summary>
     /// Route'taki açık ticket'ı request body'deki aktif Technician kullanıcısına ilk kez atar.
     /// İşlemi yapan Admin kimliği ve rolü JWT claim'lerinden alınır.
     /// Durum geçişi ve history domain davranışında birlikte oluşturulur.

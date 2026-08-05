@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
 namespace MaintenanceRequestSystem.Infrastructure.Repositories;
-
 public sealed class TicketRepository : ITicketRepository
 {
     private readonly ApplicationDbContext _context;
@@ -97,6 +96,23 @@ public sealed class TicketRepository : ITicketRepository
             .FirstOrDefaultAsync(
                 ticket => ticket.Id == id,
                 cancellationToken);
+    }
+
+    /// <summary>
+    /// Belirtilen talebe ait durum geçmişini kronolojik olarak getirir.
+    /// </summary>
+    public async Task<IReadOnlyList<TicketHistory>> GetHistoriesAsync(
+        Guid ticketId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context
+            .Set<TicketHistory>()
+            .AsNoTracking()
+            .Where(history =>
+                history.TicketId == ticketId)
+            .OrderBy(history =>
+                history.CreatedAt)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task AddAsync(

@@ -4,9 +4,12 @@ using MaintenanceRequestSystem.Application.Common.Models;
 using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Users.Dtos;
+using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.Infrastructure.Authentication;
+using MaintenanceRequestSystem.Infrastructure.Persistence;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -15,8 +18,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
-using MaintenanceRequestSystem.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 
 
 namespace MaintenanceRequestSystem.IntegrationTests.Tickets;
@@ -901,6 +902,454 @@ public sealed class TicketManagementIntegrationTests
     }
 
     [Fact]
+    public async Task PutOnHold_ByAssignedTechnician_ReturnsWaitingTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await _client.SendAsync(assignRequest)).StatusCode);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                technicianToken);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await _client.SendAsync(startRequest)).StatusCode);
+
+        using var holdRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/put-on-hold",
+                technicianToken,
+                new PutTicketOnHoldRequest
+                {
+                    Reason = "Yedek parça bekleniyor."
+                });
+
+        var response =
+            await _client.SendAsync(holdRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+        Assert.Equal("Waiting", ticket.Status);
+
+        Assert.Equal(
+            "Yedek parça bekleniyor.",
+            ticket.WaitingReason);
+    }
+
+    [Fact]
+    public async Task Resume_ByAssignedTechnician_ReturnsInProgressTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        await _client.SendAsync(assignRequest);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                technicianToken);
+
+        await _client.SendAsync(startRequest);
+
+        using var holdRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/put-on-hold",
+                technicianToken,
+                new PutTicketOnHoldRequest
+                {
+                    Reason = "Onay bekleniyor."
+                });
+
+        await _client.SendAsync(holdRequest);
+
+        using var resumeRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/resume",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(resumeRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+        Assert.Equal("InProgress", ticket.Status);
+        Assert.Null(ticket.WaitingReason);
+    }
+
+    [Fact]
+    public async Task PutOnHold_ByEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/put-on-hold",
+                setup.EmployeeToken,
+                new PutTicketOnHoldRequest
+                {
+                    Reason = "Test"
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutOnHold_ByDifferentTechnician_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var differentTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = assignedTechnician.Id
+                });
+
+        await _client.SendAsync(assignRequest);
+
+        var assignedToken =
+            await LoginAsync(
+                assignedTechnician.Email,
+                assignedTechnician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                assignedToken);
+
+        await _client.SendAsync(startRequest);
+
+        var differentToken =
+            await LoginAsync(
+                differentTechnician.Email,
+                differentTechnician.Password);
+
+        using var holdRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/put-on-hold",
+                differentToken,
+                new PutTicketOnHoldRequest
+                {
+                    Reason = "Test"
+                });
+
+        var response =
+            await _client.SendAsync(holdRequest);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Resolve_ByAssignedTechnician_ReturnsResolvedTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await _client.SendAsync(assignRequest)).StatusCode);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                technicianToken);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await _client.SendAsync(startRequest)).StatusCode);
+
+        using var resolveRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/resolve",
+                technicianToken,
+                new ResolveTicketRequest
+                {
+                    ResolutionDescription =
+                        "Ağ yapılandırması düzeltildi."
+                });
+
+        var response =
+            await _client.SendAsync(resolveRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+        Assert.Equal("Resolved", ticket.Status);
+
+        Assert.Equal(
+            "Ağ yapılandırması düzeltildi.",
+            ticket.ResolutionDescription);
+
+        Assert.NotNull(ticket.ResolvedAt);
+    }
+
+    [Fact]
+    public async Task Resolve_ByEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/resolve",
+                setup.EmployeeToken,
+                new ResolveTicketRequest
+                {
+                    ResolutionDescription =
+                        "Sorun çözüldü."
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Resolve_ByDifferentTechnician_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var differentTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = assignedTechnician.Id
+                });
+
+        await _client.SendAsync(assignRequest);
+
+        var assignedToken =
+            await LoginAsync(
+                assignedTechnician.Email,
+                assignedTechnician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                assignedToken);
+
+        await _client.SendAsync(startRequest);
+
+        var differentToken =
+            await LoginAsync(
+                differentTechnician.Email,
+                differentTechnician.Password);
+
+        using var resolveRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/resolve",
+                differentToken,
+                new ResolveTicketRequest
+                {
+                    ResolutionDescription =
+                        "Sorun çözüldü."
+                });
+
+        var response =
+            await _client.SendAsync(resolveRequest);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Resolve_WhenTicketIsWaiting_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        await _client.SendAsync(assignRequest);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                technicianToken);
+
+        await _client.SendAsync(startRequest);
+
+        using var holdRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/put-on-hold",
+                technicianToken,
+                new PutTicketOnHoldRequest
+                {
+                    Reason = "Parça bekleniyor."
+                });
+
+        await _client.SendAsync(holdRequest);
+
+        using var resolveRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/resolve",
+                technicianToken,
+                new ResolveTicketRequest
+                {
+                    ResolutionDescription =
+                        "Sorun çözüldü."
+                });
+
+        var response =
+            await _client.SendAsync(resolveRequest);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
     public async Task AssignTicket_WithoutToken_ReturnsUnauthorized()
     {
         using var request =
@@ -1098,6 +1547,1014 @@ public sealed class TicketManagementIntegrationTests
             response.StatusCode);
     }
 
+    [Fact]
+    public async Task StartProgress_ByAssignedTechnician_ReturnsInProgressTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var progressRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(progressRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+
+        Assert.Equal(
+            "InProgress",
+            ticket.Status);
+
+        Assert.Equal(
+            technician.Id,
+            ticket.AssignedTechnicianId);
+    }
+
+    [Fact]
+    public async Task StartProgress_ByEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                setup.EmployeeToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Close_ByTicketCreator_ReturnsClosedTicket()
+    {
+        var setup =
+            await CreateResolvedTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/close",
+                setup.EmployeeToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+        Assert.Equal("Closed", ticket.Status);
+        Assert.NotNull(ticket.ClosedAt);
+    }
+
+    [Fact]
+    public async Task Close_ByAdmin_ReturnsClosedTicket()
+    {
+        var setup =
+            await CreateResolvedTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/close",
+                setup.AdminToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+        Assert.Equal("Closed", ticket.Status);
+    }
+
+    [Fact]
+    public async Task Close_ByDifferentEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateResolvedTicketSetupAsync();
+
+        var secondEmployee =
+            await CreateEmployeeAsync(
+                setup.AdminToken);
+
+        var secondEmployeeToken =
+            await LoginAsync(
+                secondEmployee.Email,
+                secondEmployee.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/close",
+                secondEmployeeToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Close_ByTechnician_ReturnsForbidden()
+    {
+        var setup =
+            await CreateResolvedTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/close",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task StartProgress_ByDifferentTechnician_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var differentTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = assignedTechnician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        var differentTechnicianToken =
+            await LoginAsync(
+                differentTechnician.Email,
+                differentTechnician.Password);
+
+        using var progressRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                differentTechnicianToken);
+
+        var response =
+            await _client.SendAsync(progressRequest);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Reopen_ByTicketCreator_ReturnsInProgressTicket()
+    {
+        var setup =
+            await CreateClosedTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/reopen",
+                setup.EmployeeToken,
+                new ReopenTicketRequest
+                {
+                    Reason = "Sorun yeniden oluştu."
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+        Assert.Equal("InProgress", ticket.Status);
+
+        Assert.Null(
+            ticket.ResolutionDescription);
+
+        Assert.Null(
+            ticket.ResolvedAt);
+
+        Assert.Null(
+            ticket.ClosedAt);
+    }
+
+    [Fact]
+    public async Task Reopen_ByAdmin_ReturnsInProgressTicket()
+    {
+        var setup =
+            await CreateClosedTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/reopen",
+                setup.AdminToken,
+                new ReopenTicketRequest
+                {
+                    Reason = "Çözüm yeterli olmadı."
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+        Assert.Equal("InProgress", ticket.Status);
+    }
+
+    [Fact]
+    public async Task Reopen_ByDifferentEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateClosedTicketSetupAsync();
+
+        var secondEmployee =
+            await CreateEmployeeAsync(
+                setup.AdminToken);
+
+        var secondEmployeeToken =
+            await LoginAsync(
+                secondEmployee.Email,
+                secondEmployee.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/reopen",
+                secondEmployeeToken,
+                new ReopenTicketRequest
+                {
+                    Reason = "Sorun devam ediyor."
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Reopen_ByTechnician_ReturnsForbidden()
+    {
+        var setup =
+            await CreateClosedTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/reopen",
+                technicianToken,
+                new ReopenTicketRequest
+                {
+                    Reason = "Sorun devam ediyor."
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancel_ByTicketCreator_WhenOpen_ReturnsCancelledTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/cancel",
+                setup.EmployeeToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+
+        Assert.Equal(
+            "Cancelled",
+            ticket.Status);
+
+        using var scope =
+    _factory.Services.CreateScope();
+
+        var dbContext =
+            scope.ServiceProvider
+                .GetRequiredService<ApplicationDbContext>();
+
+        var auditLog =
+            await dbContext.AuditLogs
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    item =>
+                        item.EntityName == nameof(Ticket) &&
+                        item.EntityId == setup.Ticket.Id.ToString() &&
+                        item.Action == "TicketCancelled");
+
+        Assert.NotNull(auditLog);
+
+        Assert.Equal(
+            setup.Ticket.Id.ToString(),
+            auditLog.EntityId);
+
+        Assert.Equal(
+            "TicketCancelled",
+            auditLog.Action);
+
+        Assert.NotNull(
+            auditLog.OldValues);
+
+        Assert.NotNull(
+            auditLog.NewValues);
+    }
+
+    [Fact]
+    public async Task Cancel_ByAdmin_WhenAssigned_ReturnsCancelledTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        using var cancelRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/cancel",
+                setup.AdminToken);
+
+        var response =
+            await _client.SendAsync(cancelRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+
+        Assert.Equal(
+            "Cancelled",
+            ticket.Status);
+    }
+
+    [Fact]
+    public async Task Cancel_ByTicketCreator_WhenAssigned_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        using var cancelRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/cancel",
+                setup.EmployeeToken);
+
+        var response =
+            await _client.SendAsync(cancelRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancel_ByTechnician_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/cancel",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePriority_ByAdmin_ReturnsUpdatedTicket()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var newPriority =
+            setup.Ticket.Priority == nameof(TicketPriority.Critical)
+                ? TicketPriority.Low
+                : TicketPriority.Critical;
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/priority",
+                setup.AdminToken,
+                new ChangeTicketPriorityRequest
+                {
+                    Priority = newPriority
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var ticket =
+            await response.Content
+                .ReadFromJsonAsync<TicketDto>();
+
+        Assert.NotNull(ticket);
+
+        Assert.Equal(
+            newPriority.ToString(),
+            ticket.Priority);
+    }
+
+    [Fact]
+    public async Task ChangePriority_ByEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/priority",
+                setup.EmployeeToken,
+                new ChangeTicketPriorityRequest
+                {
+                    Priority = TicketPriority.Critical
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePriority_WithSamePriority_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var currentPriority =
+            Enum.Parse<TicketPriority>(
+                setup.Ticket.Priority);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/priority",
+                setup.AdminToken,
+                new ChangeTicketPriorityRequest
+                {
+                    Priority = currentPriority
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePriority_WhenTicketIsCancelled_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var cancelRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/cancel",
+                setup.EmployeeToken);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await _client.SendAsync(cancelRequest)).StatusCode);
+
+        using var priorityRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/priority",
+                setup.AdminToken,
+                new ChangeTicketPriorityRequest
+                {
+                    Priority = TicketPriority.Critical
+                });
+
+        var response =
+            await _client.SendAsync(priorityRequest);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SoftDelete_ByAdmin_WhenCancelled_HidesTicketFromDetailQuery()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var cancelRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/cancel",
+                setup.EmployeeToken);
+
+        var cancelResponse =
+            await _client.SendAsync(cancelRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            cancelResponse.StatusCode);
+
+        using var deleteRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Delete,
+                $"/api/tickets/{setup.Ticket.Id}",
+                setup.AdminToken);
+
+        var deleteResponse =
+            await _client.SendAsync(deleteRequest);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            deleteResponse.StatusCode);
+
+        using var detailRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}",
+                setup.AdminToken);
+
+        var detailResponse =
+            await _client.SendAsync(detailRequest);
+
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            detailResponse.StatusCode);
+
+        using var scope =
+    _factory.Services.CreateScope();
+
+        var dbContext =
+            scope.ServiceProvider
+                .GetRequiredService<ApplicationDbContext>();
+
+        var auditLog =
+            await dbContext.AuditLogs
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    item =>
+                        item.EntityName == nameof(Ticket) &&
+                        item.EntityId == setup.Ticket.Id.ToString() &&
+                        item.Action == "TicketSoftDeleted");
+
+        Assert.NotNull(auditLog);
+
+
+        Assert.Equal(
+            nameof(Ticket),
+            auditLog.EntityName);
+
+        Assert.Equal(
+            setup.Ticket.Id.ToString(),
+            auditLog.EntityId);
+
+        Assert.Equal(
+            "TicketSoftDeleted",
+            auditLog.Action);
+
+        Assert.NotNull(
+            auditLog.OldValues);
+
+        Assert.NotNull(
+            auditLog.NewValues);
+    }
+
+    [Fact]
+    public async Task SoftDelete_ByAdmin_WhenClosed_ReturnsNoContent()
+    {
+        var setup =
+            await CreateClosedTicketSetupAsync();
+
+        using var deleteRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Delete,
+                $"/api/tickets/{setup.Ticket.Id}",
+                setup.AdminToken);
+
+        var response =
+            await _client.SendAsync(deleteRequest);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            response.StatusCode);
+
+        using var detailRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}",
+                setup.AdminToken);
+
+        var detailResponse =
+            await _client.SendAsync(detailRequest);
+
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            detailResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task SoftDelete_ByEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Delete,
+                $"/api/tickets/{setup.Ticket.Id}",
+                setup.EmployeeToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SoftDelete_WhenTicketIsOpen_ReturnsBadRequest()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Delete,
+                $"/api/tickets/{setup.Ticket.Id}",
+                setup.AdminToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetHistory_ByAdmin_ReturnsStatusTransitions()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                technicianToken);
+
+        var startResponse =
+            await _client.SendAsync(startRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            startResponse.StatusCode);
+
+        using var historyRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}/history",
+                setup.AdminToken);
+
+        var response =
+            await _client.SendAsync(historyRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var histories =
+            await response.Content
+                .ReadFromJsonAsync<List<TicketHistoryDto>>();
+
+        Assert.NotNull(histories);
+
+        Assert.Contains(
+            histories,
+            history =>
+                history.OldStatus == "Open" &&
+                history.NewStatus == "Assigned");
+
+        Assert.Contains(
+            histories,
+            history =>
+                history.OldStatus == "Assigned" &&
+                history.NewStatus == "InProgress");
+    }
+
+    [Fact]
+    public async Task GetHistory_ByAssignedTechnician_ReturnsOk()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var historyRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}/history",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(historyRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var histories =
+            await response.Content
+                .ReadFromJsonAsync<List<TicketHistoryDto>>();
+
+        Assert.NotNull(histories);
+        Assert.NotEmpty(histories);
+
+        Assert.Contains(
+            histories,
+            history =>
+                history.NewStatus == "Assigned");
+    }
+
+    [Fact]
+    public async Task GetHistory_ByDifferentEmployee_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var secondEmployee =
+            await CreateEmployeeAsync(
+                setup.AdminToken);
+
+        var secondEmployeeToken =
+            await LoginAsync(
+                secondEmployee.Email,
+                secondEmployee.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}/history",
+                secondEmployeeToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
 
     [Fact]
     public async Task CreateTicket_WithInactiveAsset_ReturnsBadRequest()
@@ -1153,6 +2610,72 @@ public sealed class TicketManagementIntegrationTests
             createResponse.StatusCode);
     }
 
+
+    private async Task<TicketSetup> CreateResolvedTicketSetupAsync()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        using var assignRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/assignment",
+                setup.AdminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                });
+
+        var assignResponse =
+            await _client.SendAsync(assignRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var startRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/start-progress",
+                technicianToken);
+
+        var startResponse =
+            await _client.SendAsync(startRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            startResponse.StatusCode);
+
+        using var resolveRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/resolve",
+                technicianToken,
+                new ResolveTicketRequest
+                {
+                    ResolutionDescription =
+                        "Integration test çözümü."
+                });
+
+        var resolveResponse =
+            await _client.SendAsync(resolveRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            resolveResponse.StatusCode);
+
+        return setup;
+    }
+
     private async Task<CreatedTechnician> CreateTechnicianAsync(
     string adminToken)
     {
@@ -1198,6 +2721,27 @@ public sealed class TicketManagementIntegrationTests
             user.Id,
             email,
             password);
+    }
+
+    private async Task<TicketSetup> CreateClosedTicketSetupAsync()
+    {
+        var setup =
+            await CreateResolvedTicketSetupAsync();
+
+        using var closeRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{setup.Ticket.Id}/close",
+                setup.EmployeeToken);
+
+        var closeResponse =
+            await _client.SendAsync(closeRequest);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            closeResponse.StatusCode);
+
+        return setup;
     }
 
     private async Task<TicketDto> CreateTicketAsync(

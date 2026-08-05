@@ -21,6 +21,9 @@ public sealed class TicketHistoryConfiguration
     {
         builder.ToTable("ticket_histories");
 
+        builder.HasQueryFilter(
+            history => !history.Ticket.IsDeleted);
+
         builder.HasKey(history => history.Id);
 
         // Kimlik domain constructor'ında üretildiği için EF Core bu kaydı mevcut entity güncellemesi sanmamalıdır.
@@ -49,7 +52,7 @@ public sealed class TicketHistoryConfiguration
 
         builder.Property(history => history.Description)
             .HasColumnName("description")
-            .HasMaxLength(1000)
+            .HasColumnType("text")
             .IsRequired();
 
         builder.Property(history => history.CreatedAt)

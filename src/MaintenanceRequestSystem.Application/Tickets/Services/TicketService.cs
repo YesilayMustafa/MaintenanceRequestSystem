@@ -6,6 +6,7 @@ using MaintenanceRequestSystem.Application.Users.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.Application.Common.Models;
+using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
 
@@ -17,19 +18,9 @@ public sealed class TicketService : ITicketService
     private readonly ITicketRepository _ticketRepository;
     private readonly IAssetRepository _assetRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IAuditLogService _auditLogService;
 
-    /// <summary>
-    /// Ticket servisini gerekli repository bağımlılıklarıyla oluşturur.
-    /// </summary>
-    public TicketService(
-        ITicketRepository ticketRepository,
-        IAssetRepository assetRepository,
-        IUserRepository userRepository)
-    {
-        _ticketRepository = ticketRepository;
-        _assetRepository = assetRepository;
-        _userRepository = userRepository;
-    }
+
 
     /// <summary>
     /// Ticket listesini rol bazlı kapsam, filtre, sıralama ve sayfalama ile getirir.
@@ -75,6 +66,22 @@ public sealed class TicketService : ITicketService
             query.PageSize,
             result.TotalCount,
             totalPages);
+    }
+
+    public TicketService(
+        ITicketRepository ticketRepository,
+        IAssetRepository assetRepository,
+        IUserRepository userRepository,
+        IAuditLogService auditLogService)
+    {
+        _ticketRepository = ticketRepository;
+        _assetRepository = assetRepository;
+        _userRepository = userRepository;
+
+        ArgumentNullException.ThrowIfNull(auditLogService);
+
+        _auditLogService =
+            auditLogService;
     }
 
     /// <summary>
@@ -150,6 +157,823 @@ public sealed class TicketService : ITicketService
     }
 
     /// <summary>
+    /// Kullanıcı ve ticket kurallarını doğruladıktan sonra beklemedeki
+    /// talebi yeniden InProgress durumuna geçirir.
+    /// </summary>
+    public async Task<TicketDto> ResumeAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole != UserRole.Technician)
+        {
+            throw new ForbiddenException(
+                "Yalnızca teknik personel talepte işleme devam edebilir.");
+        }
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var technician =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (technician is null)
+        {
+            throw new KeyNotFoundException(
+                "Teknik personel bulunamadı.");
+        }
+
+        if (!technician.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif teknik personel talepte işleme devam edemez.");
+        }
+
+        ticket.Resume(
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(
+            ticket,
+            assignedTechnician: technician);
+    }
+
+    /// <summary>
+    /// Kullanıcı ve ticket kurallarını doğruladıktan sonra talebi
+    /// InProgress durumundan Resolved durumuna geçirir.
+    /// </summary>
+    public async Task<TicketDto> ResolveAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        ResolveTicketRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole != UserRole.Technician)
+        {
+            throw new ForbiddenException(
+                "Yalnızca teknik personel talepleri çözebilir.");
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var technician =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (technician is null)
+        {
+            throw new KeyNotFoundException(
+                "Teknik personel bulunamadı.");
+        }
+
+        if (!technician.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif teknik personel talepleri çözemez.");
+        }
+
+        if (technician.Role != UserRole.Technician)
+        {
+            throw new ForbiddenException(
+                "Kullanıcı teknik personel rolünde değildir.");
+        }
+
+        // Ticket entity'si durumun InProgress olduğunu ve işlemi yapan
+        // kullanıcının atanmış teknisyen olduğunu ayrıca doğrular.
+        ticket.Resolve(
+            request.ResolutionDescription,
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(
+            ticket,
+            assignedTechnician: technician);
+    }
+
+    /// <summary>
+    /// Kullanıcının Admin veya talep sahibi olduğunu doğrular ve
+    /// Closed durumundaki talebi yeniden InProgress durumuna geçirir.
+    /// </summary>
+    public async Task<TicketDto> ReopenAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        ReopenTicketRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole is not
+            (UserRole.Employee or UserRole.Admin))
+        {
+            throw new ForbiddenException(
+                "Talebi yalnızca talep sahibi veya yönetici yeniden açabilir.");
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var currentUser =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (currentUser is null)
+        {
+            throw new KeyNotFoundException(
+                "İşlemi yapan kullanıcı bulunamadı.");
+        }
+
+        if (!currentUser.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif kullanıcılar talebi yeniden açamaz.");
+        }
+
+        if (currentUserRole == UserRole.Employee &&
+            ticket.CreatedByUserId != currentUserId)
+        {
+            throw new ForbiddenException(
+                "Başka bir kullanıcıya ait talebi yeniden açamazsınız.");
+        }
+
+        ticket.Reopen(
+            request.Reason,
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(ticket);
+    }
+
+    /// <summary>
+    /// Kullanıcının iptal yetkisini ve talebin mevcut durumunu doğrular,
+    /// ardından talebi Cancelled durumuna geçirir.
+    /// </summary>
+    public async Task<TicketDto> CancelAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole is not
+            (UserRole.Employee or UserRole.Admin))
+        {
+            throw new ForbiddenException(
+                "Talebi yalnızca talep sahibi veya yönetici iptal edebilir.");
+        }
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var currentUser =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (currentUser is null)
+        {
+            throw new KeyNotFoundException(
+                "İşlemi yapan kullanıcı bulunamadı.");
+        }
+
+        if (!currentUser.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif kullanıcılar talep iptal edemez.");
+        }
+
+        if (currentUserRole == UserRole.Employee)
+        {
+            if (ticket.CreatedByUserId != currentUserId)
+            {
+                throw new ForbiddenException(
+                    "Başka bir kullanıcıya ait talebi iptal edemezsiniz.");
+            }
+
+            if (ticket.Status != TicketStatus.Open)
+            {
+                throw new ForbiddenException(
+                    "Talep sahibi yalnızca açık durumdaki talebini iptal edebilir.");
+            }
+        }
+
+        // Audit kaydında değişiklik öncesindeki durum kullanılacak.
+        var oldStatus =
+            ticket.Status;
+
+        // Domain katmanı yalnızca Open, Assigned ve Waiting
+        // durumlarından Cancelled geçişine izin verir.
+        ticket.Cancel(
+            currentUserId);
+
+        await _auditLogService.AddAsync(
+            currentUserId,
+            "TicketCancelled",
+            nameof(Ticket),
+            ticket.Id.ToString(),
+            new
+            {
+                Status = oldStatus
+            },
+            new
+            {
+                Status = ticket.Status
+            },
+            cancellationToken);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(ticket);
+    }
+
+    /// <summary>
+    /// Kullanıcının aktif bir Admin olduğunu doğrular ve
+    /// talebin önceliğini günceller.
+    /// </summary>
+    public async Task<TicketDto> ChangePriorityAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        ChangeTicketPriorityRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole != UserRole.Admin)
+        {
+            throw new ForbiddenException(
+                "Talep önceliğini yalnızca yönetici değiştirebilir.");
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var admin =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (admin is null)
+        {
+            throw new KeyNotFoundException(
+                "Yönetici kullanıcı bulunamadı.");
+        }
+
+        if (!admin.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif yöneticiler talep önceliğini değiştiremez.");
+        }
+
+        if (admin.Role != UserRole.Admin)
+        {
+            throw new ForbiddenException(
+                "Kullanıcı yönetici rolünde değildir.");
+        }
+
+        var oldPriority =
+            ticket.Priority;
+
+        ticket.ChangePriority(
+            request.Priority,
+            currentUserId);
+
+        await _auditLogService.AddAsync(
+            currentUserId,
+            "TicketPriorityChanged",
+            nameof(Ticket),
+            ticket.Id.ToString(),
+            new
+            {
+                Priority = oldPriority
+            },
+            new
+            {
+                Priority = ticket.Priority
+            },
+            cancellationToken);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(ticket);
+    }
+
+    /// <summary>
+    /// Aktif Admin kontrolünü yaptıktan sonra tamamlanmış talebi
+    /// fiziksel olarak silmeden pasifleştirir.
+    /// </summary>
+    public async Task SoftDeleteAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole != UserRole.Admin)
+        {
+            throw new ForbiddenException(
+                "Talepleri yalnızca yönetici pasifleştirebilir.");
+        }
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var admin =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (admin is null)
+        {
+            throw new KeyNotFoundException(
+                "Yönetici kullanıcı bulunamadı.");
+        }
+
+        if (!admin.IsActive ||
+            admin.Role != UserRole.Admin)
+        {
+            throw new ForbiddenException(
+                "Yalnızca aktif yöneticiler talep pasifleştirebilir.");
+        }
+
+        var oldIsDeleted =
+            ticket.IsDeleted;
+
+        var oldDeletedAt =
+            ticket.DeletedAt;
+
+        var oldDeletedByUserId =
+            ticket.DeletedByUserId;
+
+        ticket.SoftDelete(
+            currentUserId);
+
+        await _auditLogService.AddAsync(
+            currentUserId,
+            "TicketSoftDeleted",
+            nameof(Ticket),
+            ticket.Id.ToString(),
+            new
+            {
+                IsDeleted = oldIsDeleted,
+                DeletedAt = oldDeletedAt,
+                DeletedByUserId =
+                    oldDeletedByUserId
+            },
+            new
+            {
+                ticket.IsDeleted,
+                ticket.DeletedAt,
+                ticket.DeletedByUserId
+            },
+            cancellationToken);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+    }
+
+
+    /// <summary>
+    /// Talep sahibi, atanmış teknik personel veya Admin için
+    /// talebin durum geçmişini getirir.
+    /// </summary>
+    public async Task<IReadOnlyList<TicketHistoryDto>> GetHistoryAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        var currentUser =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (currentUser is null)
+        {
+            throw new KeyNotFoundException(
+                "Kullanıcı bulunamadı.");
+        }
+
+        if (!currentUser.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif kullanıcılar talep geçmişini görüntüleyemez.");
+        }
+
+        if (currentUser.Role != currentUserRole)
+        {
+            throw new ForbiddenException(
+                "Kullanıcı rolü doğrulanamadı.");
+        }
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        if (currentUserRole == UserRole.Employee &&
+            ticket.CreatedByUserId != currentUserId)
+        {
+            throw new ForbiddenException(
+                "Başka bir kullanıcıya ait talebin geçmişini görüntüleyemezsiniz.");
+        }
+
+        if (currentUserRole == UserRole.Technician &&
+            ticket.AssignedTechnicianId != currentUserId)
+        {
+            throw new ForbiddenException(
+                "Yalnızca size atanmış taleplerin geçmişini görüntüleyebilirsiniz.");
+        }
+
+        var histories =
+            await _ticketRepository.GetHistoriesAsync(
+                id,
+                cancellationToken);
+
+        return histories
+            .Select(history =>
+                new TicketHistoryDto
+                {
+                    Id = history.Id,
+
+                    PerformedByUserId =
+                        history.PerformedByUserId,
+
+                    OldStatus =
+                        history.OldStatus?.ToString(),
+
+                    NewStatus =
+                        history.NewStatus.ToString(),
+
+                    Description =
+                        history.Description,
+
+                    OccurredAt =
+                        history.CreatedAt
+                })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Kullanıcının Admin veya talep sahibi olduğunu doğrular ve
+    /// Resolved durumundaki talebi Closed durumuna geçirir.
+    /// </summary>
+    public async Task<TicketDto> CloseAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole is not
+            (UserRole.Employee or UserRole.Admin))
+        {
+            throw new ForbiddenException(
+                "Talebi yalnızca talep sahibi veya yönetici kapatabilir.");
+        }
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var currentUser =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (currentUser is null)
+        {
+            throw new KeyNotFoundException(
+                "İşlemi yapan kullanıcı bulunamadı.");
+        }
+
+        if (!currentUser.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif kullanıcılar talep kapatamaz.");
+        }
+
+        // Employee yalnızca kendisinin oluşturduğu talebi kapatabilir.
+        if (currentUserRole == UserRole.Employee &&
+            ticket.CreatedByUserId != currentUserId)
+        {
+            throw new ForbiddenException(
+                "Başka bir kullanıcıya ait talebi kapatamazsınız.");
+        }
+
+        ticket.Close(
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(ticket);
+    }
+
+
+
+    /// <summary>
+    /// Kullanıcı ve ticket kurallarını doğruladıktan sonra talebi
+    /// InProgress durumundan Waiting durumuna geçirir.
+    /// </summary>
+    public async Task<TicketDto> PutOnHoldAsync(
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        PutTicketOnHoldRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole != UserRole.Technician)
+        {
+            throw new ForbiddenException(
+                "Yalnızca teknik personel talepleri beklemeye alabilir.");
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var technician =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (technician is null)
+        {
+            throw new KeyNotFoundException(
+                "Teknik personel bulunamadı.");
+        }
+
+        if (!technician.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif teknik personel talebi beklemeye alamaz.");
+        }
+
+        if (technician.Role != UserRole.Technician)
+        {
+            throw new ForbiddenException(
+                "Kullanıcı teknik personel rolünde değildir.");
+        }
+
+        ticket.PutOnHold(
+            request.Reason,
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(
+            ticket,
+            assignedTechnician: technician);
+    }
+
+    /// <summary>
+    /// Kullanıcı rolünü ve aktifliğini doğrular, ardından talebin
+    /// Assigned durumundan InProgress durumuna geçmesini sağlar.
+    /// </summary>
+    public async Task<TicketDto> StartProgressAsync(
+    Guid id,
+    Guid currentUserId,
+    UserRole currentUserRole,
+    CancellationToken cancellationToken = default)
+    {
+        EnsureValidId(
+            id,
+            "Geçerli bir talep kimliği gereklidir.");
+
+        EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        EnsureSupportedRole(currentUserRole);
+
+        if (currentUserRole != UserRole.Technician)
+        {
+            throw new ForbiddenException(
+                "Yalnızca teknik personel talepleri işleme alabilir.");
+        }
+
+        var ticket =
+            await _ticketRepository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (ticket is null)
+        {
+            throw new KeyNotFoundException(
+                "Talep bulunamadı.");
+        }
+
+        var technician =
+            await _userRepository.GetByIdAsync(
+                currentUserId,
+                cancellationToken);
+
+        if (technician is null)
+        {
+            throw new KeyNotFoundException(
+                "Teknik personel bulunamadı.");
+        }
+
+        if (!technician.IsActive)
+        {
+            throw new ForbiddenException(
+                "Pasif teknik personel talepleri işleme alamaz.");
+        }
+
+        if (technician.Role != UserRole.Technician)
+        {
+            throw new ForbiddenException(
+                "Kullanıcı teknik personel rolünde değildir.");
+        }
+
+        ticket.StartProgress(
+            currentUserId);
+
+        await _ticketRepository.SaveChangesAsync(
+            cancellationToken);
+
+        return MapToDto(
+            ticket,
+            assignedTechnician: technician);
+    }
+
+    /// <summary>
     /// Yalnızca Admin adına açık bir ticket'ı ilk kez aktif bir Technician kullanıcısına atar.
     /// Domain davranışı durum geçişini ve history kaydını birlikte gerçekleştirir.
     /// </summary>
@@ -217,9 +1041,36 @@ public sealed class TicketService : ITicketService
                 "Talep yalnızca teknik personel rolündeki kullanıcıya atanabilir.");
         }
 
+
+
+        var oldStatus =
+    ticket.Status;
+
+        var oldAssignedTechnicianId =
+            ticket.AssignedTechnicianId;
+
         ticket.Assign(
-            technician.Id,
+            request.TechnicianId,
             currentUserId);
+
+        await _auditLogService.AddAsync(
+            currentUserId,
+            "TicketAssigned",
+            nameof(Ticket),
+            ticket.Id.ToString(),
+            new
+            {
+                Status = oldStatus,
+                AssignedTechnicianId =
+                    oldAssignedTechnicianId
+            },
+            new
+            {
+                Status = ticket.Status,
+                AssignedTechnicianId =
+                    ticket.AssignedTechnicianId
+            },
+            cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
@@ -297,9 +1148,29 @@ public sealed class TicketService : ITicketService
                 "Talep yalnızca teknik personel rolündeki kullanıcıya atanabilir.");
         }
 
+        var oldAssignedTechnicianId =
+    ticket.AssignedTechnicianId;
+
         ticket.Reassign(
             technician.Id,
             currentUserId);
+
+        await _auditLogService.AddAsync(
+    currentUserId,
+    "TicketReassigned",
+    nameof(Ticket),
+    ticket.Id.ToString(),
+    new
+    {
+        AssignedTechnicianId =
+            oldAssignedTechnicianId
+    },
+    new
+    {
+        AssignedTechnicianId =
+            ticket.AssignedTechnicianId
+    },
+    cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
@@ -308,6 +1179,8 @@ public sealed class TicketService : ITicketService
             ticket,
             assignedTechnician: technician);
     }
+
+
 
 
 

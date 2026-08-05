@@ -11,6 +11,7 @@ public sealed class Ticket
     public const int MaxDescriptionLength = 4000;
     public const int MaxWaitingReasonLength = 1000;
     public const int MaxResolutionDescriptionLength = 2000;
+    public const int MaxReopenReasonLength = 1000;
 
     private Ticket()
     {
@@ -80,6 +81,21 @@ public sealed class Ticket
     public DateTime? ResolvedAt { get; private set; }
 
     public DateTime? ClosedAt { get; private set; }
+
+    /// <summary>
+    /// Talebin soft delete ile pasifleştirilip pasifleştirilmediğini belirtir.
+    /// </summary>
+    public bool IsDeleted { get; private set; }
+
+    /// <summary>
+    /// Talebin pasifleştirildiği UTC zamanı tutar.
+    /// </summary>
+    public DateTime? DeletedAt { get; private set; }
+
+    /// <summary>
+    /// Talebi pasifleştiren kullanıcının kimliğini tutar.
+    /// </summary>
+    public Guid? DeletedByUserId { get; private set; }
 
     public ICollection<TicketComment> Comments { get; private set; }
         = new List<TicketComment>();
@@ -164,6 +180,417 @@ public sealed class Ticket
                 oldStatus,
                 Status,
                 "Talep başka bir teknik personele yeniden atandı."));
+    }
+
+    public void StartProgress(
+    Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (Status != TicketStatus.Assigned)
+        {
+            throw new ArgumentException(
+                "Yalnızca atanmış durumdaki talepler işleme alınabilir.");
+        }
+
+        if (AssignedTechnicianId != performedByUserId)
+        {
+            throw new ArgumentException(
+                "Talebi yalnızca atanmış teknik personel işleme alabilir.");
+        }
+
+        var oldStatus = Status;
+
+        Status = TicketStatus.InProgress;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                "Teknik personel talebi işleme aldı."));
+    }
+
+    /// <summary>
+    /// İşlemdeki talebi, bekleme nedeni zorunlu olacak şekilde
+    /// Waiting durumuna geçirir ve durum geçmişi oluşturur.
+    /// </summary>
+    public void PutOnHold(
+        string reason,
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (Status != TicketStatus.InProgress)
+        {
+            throw new ArgumentException(
+                "Yalnızca işlemdeki talepler beklemeye alınabilir.");
+        }
+
+        if (AssignedTechnicianId != performedByUserId)
+        {
+            throw new ArgumentException(
+                "Talebi yalnızca atanmış teknik personel beklemeye alabilir.");
+        }
+
+        var normalizedReason =
+            NormalizeWaitingReason(reason);
+
+        var oldStatus = Status;
+
+        WaitingReason = normalizedReason;
+        Status = TicketStatus.Waiting;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                $"Talep beklemeye alındı: {normalizedReason}"));
+    }
+
+    /// <summary>
+    /// Beklemedeki talebi tekrar işleme alır, bekleme nedenini temizler
+    /// ve Waiting → InProgress geçmişini oluşturur.
+    /// </summary>
+    public void Resume(
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (Status != TicketStatus.Waiting)
+        {
+            throw new ArgumentException(
+                "Yalnızca beklemedeki taleplerde işleme devam edilebilir.");
+        }
+
+        if (AssignedTechnicianId != performedByUserId)
+        {
+            throw new ArgumentException(
+                "Talepte yalnızca atanmış teknik personel işleme devam edebilir.");
+        }
+
+        var oldStatus = Status;
+
+        WaitingReason = null;
+        Status = TicketStatus.InProgress;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                "Teknik personel talepte işleme devam etti."));
+    }
+
+    /// <summary>
+    /// İşlemdeki talebi çözüm açıklamasıyla Resolved durumuna geçirir
+    /// ve durum geçmişini oluşturur.
+    /// </summary>
+    public void Resolve(
+        string resolutionDescription,
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (Status != TicketStatus.InProgress)
+        {
+            throw new ArgumentException(
+                "Yalnızca işlemdeki talepler çözülebilir.");
+        }
+
+        if (AssignedTechnicianId != performedByUserId)
+        {
+            throw new ArgumentException(
+                "Talebi yalnızca atanmış teknik personel çözebilir.");
+        }
+
+        var normalizedDescription =
+            NormalizeResolutionDescription(
+                resolutionDescription);
+
+        var oldStatus = Status;
+        var now = DateTime.UtcNow;
+
+        ResolutionDescription =
+            normalizedDescription;
+
+        Status = TicketStatus.Resolved;
+        ResolvedAt = now;
+        UpdatedAt = now;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                $"Talep çözüldü: {normalizedDescription}"));
+    }
+
+    /// <summary>
+    /// Çözümlenmiş talebi Closed durumuna geçirir, kapanış zamanını
+    /// günceller ve durum geçmişini oluşturur.
+    /// </summary>
+    public void Close(
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (Status != TicketStatus.Resolved)
+        {
+            throw new ArgumentException(
+                "Yalnızca çözümlenmiş talepler kapatılabilir.");
+        }
+
+        var oldStatus = Status;
+        var now = DateTime.UtcNow;
+
+        Status = TicketStatus.Closed;
+        ClosedAt = now;
+        UpdatedAt = now;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                "Talep kapatıldı."));
+    }
+
+    /// <summary>
+    /// Kapatılmış talebi, yeniden açma nedeni zorunlu olacak şekilde
+    /// InProgress durumuna geçirir ve önceki çözüm bilgilerini temizler.
+    /// </summary>
+    public void Reopen(
+        string reason,
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (Status != TicketStatus.Closed)
+        {
+            throw new ArgumentException(
+                "Yalnızca kapatılmış talepler yeniden açılabilir.");
+        }
+
+        var normalizedReason =
+            NormalizeReopenReason(reason);
+
+        var oldStatus = Status;
+        var now = DateTime.UtcNow;
+
+        Status = TicketStatus.InProgress;
+
+        ResolutionDescription = null;
+        ResolvedAt = null;
+        ClosedAt = null;
+        WaitingReason = null;
+
+        UpdatedAt = now;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                $"Talep yeniden açıldı: {normalizedReason}"));
+    }
+
+    /// <summary>
+    /// İptale uygun durumdaki talebi Cancelled durumuna geçirir
+    /// ve durum geçmişini oluşturur.
+    /// </summary>
+    public void Cancel(
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (Status is not
+            (TicketStatus.Open or
+             TicketStatus.Assigned or
+             TicketStatus.Waiting))
+        {
+            throw new ArgumentException(
+                "Yalnızca açık, atanmış veya beklemedeki talepler iptal edilebilir.");
+        }
+
+        var oldStatus = Status;
+
+        Status = TicketStatus.Cancelled;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                oldStatus,
+                Status,
+                "Talep iptal edildi."));
+    }
+
+
+
+    /// <summary>
+    /// Aktif durumdaki talebin önceliğini değiştirir.
+    /// Tamamlanmış veya iptal edilmiş taleplerin önceliği değiştirilemez.
+    /// </summary>
+    public void ChangePriority(
+        TicketPriority newPriority,
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (!Enum.IsDefined(
+                typeof(TicketPriority),
+                newPriority))
+        {
+            throw new ArgumentException(
+                "Geçerli bir talep önceliği gereklidir.",
+                nameof(newPriority));
+        }
+
+        if (Status is
+            TicketStatus.Resolved or
+            TicketStatus.Closed or
+            TicketStatus.Cancelled)
+        {
+            throw new ArgumentException(
+                "Tamamlanmış veya iptal edilmiş taleplerin önceliği değiştirilemez.");
+        }
+
+        if (Priority == newPriority)
+        {
+            throw new ArgumentException(
+                "Talep zaten belirtilen önceliğe sahiptir.",
+                nameof(newPriority));
+        }
+
+        Priority = newPriority;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Tamamlanmış veya iptal edilmiş talebi fiziksel olarak silmeden
+    /// pasifleştirir ve silme bilgilerini kaydeder.
+    /// </summary>
+    public void SoftDelete(
+        Guid performedByUserId)
+    {
+        EnsureValidPerformedByUserId(
+            performedByUserId);
+
+        if (IsDeleted)
+        {
+            throw new ArgumentException(
+                "Talep zaten pasifleştirilmiştir.");
+        }
+
+        if (Status is not
+            (TicketStatus.Closed or
+             TicketStatus.Cancelled))
+        {
+            throw new ArgumentException(
+                "Yalnızca kapatılmış veya iptal edilmiş talepler pasifleştirilebilir.");
+        }
+
+        var now = DateTime.UtcNow;
+
+        IsDeleted = true;
+        DeletedAt = now;
+        DeletedByUserId = performedByUserId;
+        UpdatedAt = now;
+    }
+
+    private static string NormalizeReopenReason(
+    string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException(
+                "Yeniden açma nedeni gereklidir.",
+                nameof(reason));
+        }
+
+        var normalizedReason =
+            reason.Trim();
+
+        if (normalizedReason.Length >
+            MaxReopenReasonLength)
+        {
+            throw new ArgumentException(
+                $"Yeniden açma nedeni en fazla {MaxReopenReasonLength} karakter olabilir.",
+                nameof(reason));
+        }
+
+        return normalizedReason;
+    }
+
+
+
+    private static string NormalizeResolutionDescription(
+    string resolutionDescription)
+    {
+        if (string.IsNullOrWhiteSpace(
+                resolutionDescription))
+        {
+            throw new ArgumentException(
+                "Çözüm açıklaması gereklidir.",
+                nameof(resolutionDescription));
+        }
+
+        var normalizedDescription =
+            resolutionDescription.Trim();
+
+        if (normalizedDescription.Length >
+            MaxResolutionDescriptionLength)
+        {
+            throw new ArgumentException(
+                $"Çözüm açıklaması en fazla {MaxResolutionDescriptionLength} karakter olabilir.",
+                nameof(resolutionDescription));
+        }
+
+        return normalizedDescription;
+    }
+
+    private static string NormalizeWaitingReason(
+    string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException(
+                "Bekleme nedeni gereklidir.",
+                nameof(reason));
+        }
+
+        var normalizedReason =
+            reason.Trim();
+
+        if (normalizedReason.Length >
+            MaxWaitingReasonLength)
+        {
+            throw new ArgumentException(
+                $"Bekleme nedeni en fazla {MaxWaitingReasonLength} karakter olabilir.",
+                nameof(reason));
+        }
+
+        return normalizedReason;
     }
 
     private static string NormalizeTitle(string title)

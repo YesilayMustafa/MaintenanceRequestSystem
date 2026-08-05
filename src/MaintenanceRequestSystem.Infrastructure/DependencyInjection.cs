@@ -17,6 +17,8 @@ using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Tickets.Services;
 using MaintenanceRequestSystem.Application.TicketComments.Interfaces;
 using MaintenanceRequestSystem.Application.TicketComments.Services;
+using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
+using MaintenanceRequestSystem.Application.AuditLogs.Services;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -42,6 +44,13 @@ public static class DependencyInjection
         services.AddScoped<IAssetService, AssetService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<ITicketService, TicketService>();
+        services.AddScoped<
+            IAuditLogRepository,
+            AuditLogRepository>();
+
+        services.AddScoped<
+            IAuditLogService,
+            AuditLogService>();
 
         services.AddScoped<
             ITicketCommentRepository,
