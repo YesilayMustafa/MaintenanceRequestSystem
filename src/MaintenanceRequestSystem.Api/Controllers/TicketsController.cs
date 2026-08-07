@@ -21,14 +21,30 @@ namespace MaintenanceRequestSystem.Api.Controllers;
         nameof(UserRole.Admin))]
 public sealed class TicketsController : ControllerBase
 {
-    private readonly ITicketService _ticketService;
+    private readonly ITicketQueryService _ticketQueryService;
+    private readonly ITicketCreationService _ticketCreationService;
+    private readonly ITicketAssignmentService _ticketAssignmentService;
+    private readonly ITicketTechnicianLifecycleService _ticketTechnicianLifecycleService;
+    private readonly ITicketCompletionService _ticketCompletionService;
+    private readonly ITicketAdministrationService _ticketAdministrationService;
 
     /// <summary>
     /// Controller'ı ticket use case sözleşmesiyle oluşturur.
     /// </summary>
-    public TicketsController(ITicketService ticketService)
+    public TicketsController(
+        ITicketQueryService ticketQueryService,
+        ITicketCreationService ticketCreationService,
+        ITicketAssignmentService ticketAssignmentService,
+        ITicketTechnicianLifecycleService ticketTechnicianLifecycleService,
+        ITicketCompletionService ticketCompletionService,
+        ITicketAdministrationService ticketAdministrationService)
     {
-        _ticketService = ticketService;
+        _ticketQueryService = ticketQueryService;
+        _ticketCreationService = ticketCreationService;
+        _ticketAssignmentService = ticketAssignmentService;
+        _ticketTechnicianLifecycleService = ticketTechnicianLifecycleService;
+        _ticketCompletionService = ticketCompletionService;
+        _ticketAdministrationService = ticketAdministrationService;
     }
 
     /// <summary>
@@ -57,7 +73,7 @@ public sealed class TicketsController : ControllerBase
 
 
         var ticket =
-            await _ticketService.CreateAsync(
+            await _ticketCreationService.CreateAsync(
                 userId,
                 request,
                 cancellationToken);
@@ -97,7 +113,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.ReassignAsync(
+            await _ticketAssignmentService.ReassignAsync(
                 id,
                 userId,
                 role,
@@ -128,7 +144,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var result =
-            await _ticketService.GetPagedAsync(
+            await _ticketQueryService.GetPagedAsync(
                 userId,
                 role,
                 query,
@@ -164,7 +180,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.StartProgressAsync(
+            await _ticketTechnicianLifecycleService.StartProgressAsync(
                 id,
                 userId,
                 role,
@@ -201,7 +217,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.PutOnHoldAsync(
+            await _ticketTechnicianLifecycleService.PutOnHoldAsync(
                 id,
                 userId,
                 role,
@@ -240,7 +256,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.ResolveAsync(
+            await _ticketTechnicianLifecycleService.ResolveAsync(
                 id,
                 userId,
                 role,
@@ -280,7 +296,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.CloseAsync(
+            await _ticketCompletionService.CloseAsync(
                 id,
                 userId,
                 role,
@@ -320,7 +336,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.ReopenAsync(
+            await _ticketCompletionService.ReopenAsync(
                 id,
                 userId,
                 role,
@@ -361,7 +377,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.CancelAsync(
+            await _ticketCompletionService.CancelAsync(
                 id,
                 userId,
                 role,
@@ -398,7 +414,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.ChangePriorityAsync(
+            await _ticketAdministrationService.ChangePriorityAsync(
                 id,
                 userId,
                 role,
@@ -435,7 +451,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var histories =
-            await _ticketService.GetHistoryAsync(
+            await _ticketQueryService.GetHistoryAsync(
                 id,
                 userId,
                 role,
@@ -465,7 +481,7 @@ public sealed class TicketsController : ControllerBase
             return Unauthorized();
         }
 
-        await _ticketService.SoftDeleteAsync(
+        await _ticketAdministrationService.SoftDeleteAsync(
             id,
             userId,
             role,
@@ -501,7 +517,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.ResumeAsync(
+            await _ticketTechnicianLifecycleService.ResumeAsync(
                 id,
                 userId,
                 role,
@@ -539,7 +555,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.AssignAsync(
+            await _ticketAssignmentService.AssignAsync(
                 id,
                 userId,
                 role,
@@ -572,7 +588,7 @@ public sealed class TicketsController : ControllerBase
         }
 
         var ticket =
-            await _ticketService.GetByIdAsync(
+            await _ticketQueryService.GetByIdAsync(
                 id,
                 userId,
                 role,
