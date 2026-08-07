@@ -154,6 +154,13 @@ public sealed class TicketCommentService
                 "Başka bir kullanıcıya ait talebin yorumlarına erişemezsiniz.");
         }
 
+        if (currentUserRole == UserRole.Technician &&
+            ticket.AssignedTechnicianId != currentUserId)
+        {
+            throw new ForbiddenException(
+                "Yalnızca size atanmış taleplerin yorumlarına erişebilirsiniz.");
+        }
+
         return ticket;
     }
 

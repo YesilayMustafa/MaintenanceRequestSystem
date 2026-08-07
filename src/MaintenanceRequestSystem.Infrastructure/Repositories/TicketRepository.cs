@@ -35,6 +35,14 @@ public sealed class TicketRepository : ITicketRepository
                         ticket.CreatedByUserId == currentUserId);
         }
 
+        if (currentUserRole == UserRole.Technician)
+        {
+            ticketQuery =
+                ticketQuery.Where(
+                    ticket =>
+                        ticket.AssignedTechnicianId == currentUserId);
+        }
+
         if (query.Status.HasValue)
         {
             ticketQuery =

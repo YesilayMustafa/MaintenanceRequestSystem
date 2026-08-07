@@ -170,4 +170,42 @@ public sealed partial class TicketManagementIntegrationTests
             response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetHistory_ByDifferentTechnician_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var differentTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            assignedTechnician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                differentTechnician.Email,
+                differentTechnician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}/history",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
 }

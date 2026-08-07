@@ -122,6 +122,15 @@ public sealed partial class TicketServiceTests
                             currentUserId);
             }
 
+            if (currentUserRole == UserRole.Technician)
+            {
+                filteredTickets =
+                    filteredTickets.Where(
+                        ticket =>
+                            ticket.AssignedTechnicianId ==
+                            currentUserId);
+            }
+
             var items =
                 filteredTickets.ToList();
 

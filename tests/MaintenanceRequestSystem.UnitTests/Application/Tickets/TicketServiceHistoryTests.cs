@@ -201,4 +201,49 @@ new TicketQueryService(
             0,
             ticketRepository.GetHistoriesCallCount);
     }
+
+    [Fact]
+    public async Task GetHistoryAsync_ByDifferentTechnician_ThrowsForbiddenException()
+    {
+        var creator = CreateUser();
+        var assignedTechnician = CreateTechnician();
+        var differentTechnician = CreateTechnician();
+
+        var ticket =
+            new Ticket(
+                Guid.NewGuid(),
+                creator.Id,
+                "Sunucu bağlantı sorunu",
+                "Sunucuya bağlantı kurulamıyor.",
+                TicketPriority.High);
+
+        ticket.Assign(
+            assignedTechnician.Id,
+            Guid.NewGuid());
+
+        var ticketRepository =
+            new FakeTicketRepository
+            {
+                TicketById = ticket,
+                Histories = ticket.Histories.ToList()
+            };
+
+        var service =
+new TicketQueryService(
+                ticketRepository,
+                new FakeUserRepository
+                {
+                    UserById = differentTechnician
+                });
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => service.GetHistoryAsync(
+                ticket.Id,
+                differentTechnician.Id,
+                UserRole.Technician));
+
+        Assert.Equal(
+            0,
+            ticketRepository.GetHistoriesCallCount);
+    }
 }

@@ -142,6 +142,29 @@ public sealed partial class TicketManagementIntegrationTests
             password);
     }
 
+    private async Task AssignTicketAsync(
+        string adminToken,
+        Guid ticketId,
+        Guid technicianId)
+    {
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{ticketId}/assignment",
+                adminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technicianId
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+    }
+
     private async Task<TicketSetup> CreateClosedTicketSetupAsync()
     {
         var setup =
