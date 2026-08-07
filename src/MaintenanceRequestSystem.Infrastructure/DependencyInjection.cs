@@ -49,6 +49,10 @@ public static class DependencyInjection
         services.AddScoped<
             ITicketTechnicianLifecycleService,
             TicketTechnicianLifecycleService>();
+        services.AddScoped<ITicketCompletionService, TicketCompletionService>();
+        services.AddScoped<
+            ITicketAdministrationService,
+            TicketAdministrationService>();
         services.AddScoped<ITicketService, TicketService>();
         services.AddScoped<
             IAuditLogRepository,

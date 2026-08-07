@@ -41,7 +41,15 @@ public sealed partial class TicketServiceTests
                 auditLogService),
             new TicketTechnicianLifecycleService(
                 ticketRepository,
-                userRepository));
+                userRepository),
+            new TicketCompletionService(
+                ticketRepository,
+                userRepository,
+                auditLogService),
+            new TicketAdministrationService(
+                ticketRepository,
+                userRepository,
+                auditLogService));
     }
 
     private static CreateTicketRequest CreateRequest(

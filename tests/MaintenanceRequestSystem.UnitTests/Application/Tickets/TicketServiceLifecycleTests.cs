@@ -632,9 +632,8 @@ new TicketTechnicianLifecycleService(
             };
 
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = creator
@@ -709,9 +708,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = admin
@@ -773,9 +771,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = creator
@@ -858,9 +855,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = admin
@@ -921,9 +917,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = differentEmployee
@@ -953,9 +948,8 @@ CreateTicketService(
     public async Task ReopenAsync_ByTechnician_ThrowsForbiddenException()
     {
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 new FakeTicketRepository(),
-                new FakeAssetRepository(),
                 new FakeUserRepository(),
                 NoOpAuditLogService);
 
@@ -1003,9 +997,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = differentEmployee
@@ -1030,9 +1023,8 @@ CreateTicketService(
             new FakeTicketRepository();
 
         var service =
-CreateTicketService(
+new TicketCompletionService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository(),
                 NoOpAuditLogService);
 

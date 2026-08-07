@@ -23,6 +23,8 @@ public sealed partial class TicketService : ITicketService
     private readonly ITicketCreationService _ticketCreationService;
     private readonly ITicketAssignmentService _ticketAssignmentService;
     private readonly ITicketTechnicianLifecycleService _ticketTechnicianLifecycleService;
+    private readonly ITicketCompletionService _ticketCompletionService;
+    private readonly ITicketAdministrationService _ticketAdministrationService;
 
 
 
@@ -35,7 +37,9 @@ public sealed partial class TicketService : ITicketService
         ITicketQueryService ticketQueryService,
         ITicketCreationService ticketCreationService,
         ITicketAssignmentService ticketAssignmentService,
-        ITicketTechnicianLifecycleService ticketTechnicianLifecycleService)
+        ITicketTechnicianLifecycleService ticketTechnicianLifecycleService,
+        ITicketCompletionService ticketCompletionService,
+        ITicketAdministrationService ticketAdministrationService)
     {
         _ticketRepository = ticketRepository;
         _assetRepository = assetRepository;
@@ -46,6 +50,8 @@ public sealed partial class TicketService : ITicketService
         ArgumentNullException.ThrowIfNull(ticketCreationService);
         ArgumentNullException.ThrowIfNull(ticketAssignmentService);
         ArgumentNullException.ThrowIfNull(ticketTechnicianLifecycleService);
+        ArgumentNullException.ThrowIfNull(ticketCompletionService);
+        ArgumentNullException.ThrowIfNull(ticketAdministrationService);
 
         _auditLogService =
             auditLogService;
@@ -61,6 +67,12 @@ public sealed partial class TicketService : ITicketService
 
         _ticketTechnicianLifecycleService =
             ticketTechnicianLifecycleService;
+
+        _ticketCompletionService =
+            ticketCompletionService;
+
+        _ticketAdministrationService =
+            ticketAdministrationService;
     }
 
 

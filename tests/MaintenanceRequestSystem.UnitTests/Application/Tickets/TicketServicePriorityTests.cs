@@ -43,9 +43,8 @@ public sealed partial class TicketServiceTests
             };
 
         var service =
-            CreateTicketService(
+            new TicketAdministrationService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = admin
@@ -85,9 +84,8 @@ public sealed partial class TicketServiceTests
     public async Task ChangePriorityAsync_ByEmployee_ThrowsForbiddenException()
     {
         var service =
-CreateTicketService(
+new TicketAdministrationService(
                 new FakeTicketRepository(),
-                new FakeAssetRepository(),
                 new FakeUserRepository(),
                 NoOpAuditLogService);
 
@@ -132,9 +130,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketAdministrationService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = admin
@@ -188,9 +185,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketAdministrationService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = admin
