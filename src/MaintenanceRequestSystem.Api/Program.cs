@@ -5,11 +5,34 @@ using MaintenanceRequestSystem.Api.ExceptionHandling;
 using MaintenanceRequestSystem.Api.Extensions;
 using MaintenanceRequestSystem.Api.OpenApi;
 
+const string FrontendCorsPolicy = "FrontendDevelopment";
+
 var builder = WebApplication.CreateBuilder(args);
+
+var allowedOrigins =
+    builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("postgresql");
 builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        FrontendCorsPolicy,
+        policy =>
+        {
+            if (allowedOrigins.Length > 0)
+            {
+                policy.WithOrigins(allowedOrigins);
+            }
+
+            policy
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+});
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer<
@@ -41,6 +64,7 @@ else
 // Yerel geliştirmede şimdilik kapalı.
 // app.UseHttpsRedirection();
 
+app.UseCors(FrontendCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 
