@@ -43,9 +43,8 @@ public sealed partial class TicketServiceTests
             new FakeAuditLogService();
 
         var service =
-            CreateTicketService(
+            new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = secondTechnician
@@ -110,9 +109,8 @@ public sealed partial class TicketServiceTests
             new FakeTicketRepository();
 
         var service =
-CreateTicketService(
+new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository(),
                 NoOpAuditLogService);
 
@@ -152,9 +150,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
@@ -183,9 +180,8 @@ CreateTicketService(
             new FakeTicketRepository();
 
         var service =
-CreateTicketService(
+new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository(),
                 NoOpAuditLogService);
 
@@ -228,9 +224,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = null
@@ -276,9 +271,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = employee
@@ -325,9 +319,8 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
@@ -381,9 +374,8 @@ CreateTicketService(
         var auditLogService =
     new FakeAuditLogService();
         var service =
-            CreateTicketService(
+            new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
@@ -468,9 +460,8 @@ CreateTicketService(
             new FakeTicketRepository();
 
         var service =
-CreateTicketService(
+new TicketAssignmentService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository(),
                 NoOpAuditLogService);
 

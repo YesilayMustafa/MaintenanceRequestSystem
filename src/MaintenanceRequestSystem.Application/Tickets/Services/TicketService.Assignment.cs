@@ -1,6 +1,4 @@
-﻿using MaintenanceRequestSystem.Application.Common.Exceptions;
-using MaintenanceRequestSystem.Application.Tickets.Dtos;
-using MaintenanceRequestSystem.Domain.Entities;
+﻿using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
@@ -12,106 +10,18 @@ public sealed partial class TicketService
     /// Domain davranışı durum geçişini ve history kaydını birlikte gerçekleştirir.
     /// </summary>
     public async Task<TicketDto> AssignAsync(
-    Guid id,
-    Guid currentUserId,
-    UserRole currentUserRole,
-    AssignTicketRequest request,
-    CancellationToken cancellationToken = default)
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        AssignTicketRequest request,
+        CancellationToken cancellationToken = default)
     {
-        EnsureValidId(
+        return await _ticketAssignmentService.AssignAsync(
             id,
-            "Geçerli bir talep kimliği gereklidir.");
-
-        EnsureValidId(
             currentUserId,
-            "Geçerli bir kullanıcı kimliği gereklidir.");
-
-        EnsureSupportedRole(currentUserRole);
-
-        // Yetki ve hedef kullanıcı uygunluğu, domain state'i değişmeden önce tamamen doğrulanır.
-        if (currentUserRole != UserRole.Admin)
-        {
-            throw new ForbiddenException(
-                "Yalnızca yöneticiler talep atayabilir.");
-        }
-
-        ArgumentNullException.ThrowIfNull(request);
-
-        EnsureValidId(
-            request.TechnicianId,
-            "Geçerli bir teknik personel kimliği gereklidir.");
-
-        var ticket =
-            await _ticketRepository.GetByIdAsync(
-                id,
-                cancellationToken);
-
-        if (ticket is null)
-        {
-            throw new KeyNotFoundException(
-                "Talep bulunamadı.");
-        }
-
-        var technician =
-            await _userRepository.GetByIdAsync(
-                request.TechnicianId,
-                cancellationToken);
-
-        if (technician is null)
-        {
-            throw new KeyNotFoundException(
-                "Teknik personel bulunamadı.");
-        }
-
-        if (!technician.IsActive)
-        {
-            throw new RequestValidationException(
-                "Pasif bir kullanıcıya talep atanamaz.");
-        }
-
-        if (technician.Role != UserRole.Technician)
-        {
-            throw new RequestValidationException(
-                "Talep yalnızca teknik personel rolündeki kullanıcıya atanabilir.");
-        }
-
-
-
-        var oldStatus =
-    ticket.Status;
-
-        var oldAssignedTechnicianId =
-            ticket.AssignedTechnicianId;
-
-        ticket.Assign(
-            request.TechnicianId,
-            currentUserId);
-
-        await _auditLogService.AddAsync(
-            currentUserId,
-            "TicketAssigned",
-            nameof(Ticket),
-            ticket.Id.ToString(),
-            new
-            {
-                Status = oldStatus,
-                AssignedTechnicianId =
-                    oldAssignedTechnicianId
-            },
-            new
-            {
-                Status = ticket.Status,
-                AssignedTechnicianId =
-                    ticket.AssignedTechnicianId
-            },
+            currentUserRole,
+            request,
             cancellationToken);
-
-        await _ticketRepository.SaveChangesAsync(
-            cancellationToken);
-
-        return MapToDto(
-            ticket,
-            assignedTechnician: technician);
     }
 
     /// <summary>
@@ -119,98 +29,17 @@ public sealed partial class TicketService
     /// Durum Assigned kalırken atama değişikliği ve history domain içinde birlikte güncellenir.
     /// </summary>
     public async Task<TicketDto> ReassignAsync(
-    Guid id,
-    Guid currentUserId,
-    UserRole currentUserRole,
-    AssignTicketRequest request,
-    CancellationToken cancellationToken = default)
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        AssignTicketRequest request,
+        CancellationToken cancellationToken = default)
     {
-        EnsureValidId(
+        return await _ticketAssignmentService.ReassignAsync(
             id,
-            "Geçerli bir talep kimliği gereklidir.");
-
-        EnsureValidId(
             currentUserId,
-            "Geçerli bir kullanıcı kimliği gereklidir.");
-
-        EnsureSupportedRole(currentUserRole);
-
-        // Yetki ve hedef kullanıcı uygunluğu, mevcut atama değiştirilmeden önce tamamen doğrulanır.
-        if (currentUserRole != UserRole.Admin)
-        {
-            throw new ForbiddenException(
-                "Yalnızca yöneticiler talepleri yeniden atayabilir.");
-        }
-
-        ArgumentNullException.ThrowIfNull(request);
-
-        EnsureValidId(
-            request.TechnicianId,
-            "Geçerli bir teknik personel kimliği gereklidir.");
-
-        var ticket =
-            await _ticketRepository.GetByIdAsync(
-                id,
-                cancellationToken);
-
-        if (ticket is null)
-        {
-            throw new KeyNotFoundException(
-                "Talep bulunamadı.");
-        }
-
-        var technician =
-            await _userRepository.GetByIdAsync(
-                request.TechnicianId,
-                cancellationToken);
-
-        if (technician is null)
-        {
-            throw new KeyNotFoundException(
-                "Teknik personel bulunamadı.");
-        }
-
-        if (!technician.IsActive)
-        {
-            throw new RequestValidationException(
-                "Pasif bir kullanıcıya talep atanamaz.");
-        }
-
-        if (technician.Role != UserRole.Technician)
-        {
-            throw new RequestValidationException(
-                "Talep yalnızca teknik personel rolündeki kullanıcıya atanabilir.");
-        }
-
-        var oldAssignedTechnicianId =
-    ticket.AssignedTechnicianId;
-
-        ticket.Reassign(
-            technician.Id,
-            currentUserId);
-
-        await _auditLogService.AddAsync(
-    currentUserId,
-    "TicketReassigned",
-    nameof(Ticket),
-    ticket.Id.ToString(),
-    new
-    {
-        AssignedTechnicianId =
-            oldAssignedTechnicianId
-    },
-    new
-    {
-        AssignedTechnicianId =
-            ticket.AssignedTechnicianId
-    },
-    cancellationToken);
-
-        await _ticketRepository.SaveChangesAsync(
+            currentUserRole,
+            request,
             cancellationToken);
-
-        return MapToDto(
-            ticket,
-            assignedTechnician: technician);
     }
 }

@@ -34,6 +34,13 @@ public sealed partial class TicketServiceTests
             new TicketCreationService(
                 ticketRepository,
                 assetRepository,
+                userRepository),
+            new TicketAssignmentService(
+                ticketRepository,
+                userRepository,
+                auditLogService),
+            new TicketTechnicianLifecycleService(
+                ticketRepository,
                 userRepository));
     }
 

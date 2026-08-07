@@ -1,5 +1,4 @@
-﻿using MaintenanceRequestSystem.Application.Common.Exceptions;
-using MaintenanceRequestSystem.Application.Tickets.Dtos;
+﻿using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
@@ -11,70 +10,16 @@ public sealed partial class TicketService
     /// Assigned durumundan InProgress durumuna geçmesini sağlar.
     /// </summary>
     public async Task<TicketDto> StartProgressAsync(
-    Guid id,
-    Guid currentUserId,
-    UserRole currentUserRole,
-    CancellationToken cancellationToken = default)
+        Guid id,
+        Guid currentUserId,
+        UserRole currentUserRole,
+        CancellationToken cancellationToken = default)
     {
-        EnsureValidId(
+        return await _ticketTechnicianLifecycleService.StartProgressAsync(
             id,
-            "Geçerli bir talep kimliği gereklidir.");
-
-        EnsureValidId(
             currentUserId,
-            "Geçerli bir kullanıcı kimliği gereklidir.");
-
-        EnsureSupportedRole(currentUserRole);
-
-        if (currentUserRole != UserRole.Technician)
-        {
-            throw new ForbiddenException(
-                "Yalnızca teknik personel talepleri işleme alabilir.");
-        }
-
-        var ticket =
-            await _ticketRepository.GetByIdAsync(
-                id,
-                cancellationToken);
-
-        if (ticket is null)
-        {
-            throw new KeyNotFoundException(
-                "Talep bulunamadı.");
-        }
-
-        var technician =
-            await _userRepository.GetByIdAsync(
-                currentUserId,
-                cancellationToken);
-
-        if (technician is null)
-        {
-            throw new KeyNotFoundException(
-                "Teknik personel bulunamadı.");
-        }
-
-        if (!technician.IsActive)
-        {
-            throw new ForbiddenException(
-                "Pasif teknik personel talepleri işleme alamaz.");
-        }
-
-        if (technician.Role != UserRole.Technician)
-        {
-            throw new ForbiddenException(
-                "Kullanıcı teknik personel rolünde değildir.");
-        }
-
-        ticket.StartProgress(
-            currentUserId);
-
-        await _ticketRepository.SaveChangesAsync(
+            currentUserRole,
             cancellationToken);
-
-        return MapToDto(
-            ticket,
-            assignedTechnician: technician);
     }
 
     /// <summary>
@@ -88,68 +33,12 @@ public sealed partial class TicketService
         PutTicketOnHoldRequest request,
         CancellationToken cancellationToken = default)
     {
-        EnsureValidId(
+        return await _ticketTechnicianLifecycleService.PutOnHoldAsync(
             id,
-            "Geçerli bir talep kimliği gereklidir.");
-
-        EnsureValidId(
             currentUserId,
-            "Geçerli bir kullanıcı kimliği gereklidir.");
-
-        EnsureSupportedRole(currentUserRole);
-
-        if (currentUserRole != UserRole.Technician)
-        {
-            throw new ForbiddenException(
-                "Yalnızca teknik personel talepleri beklemeye alabilir.");
-        }
-
-        ArgumentNullException.ThrowIfNull(request);
-
-        var ticket =
-            await _ticketRepository.GetByIdAsync(
-                id,
-                cancellationToken);
-
-        if (ticket is null)
-        {
-            throw new KeyNotFoundException(
-                "Talep bulunamadı.");
-        }
-
-        var technician =
-            await _userRepository.GetByIdAsync(
-                currentUserId,
-                cancellationToken);
-
-        if (technician is null)
-        {
-            throw new KeyNotFoundException(
-                "Teknik personel bulunamadı.");
-        }
-
-        if (!technician.IsActive)
-        {
-            throw new ForbiddenException(
-                "Pasif teknik personel talebi beklemeye alamaz.");
-        }
-
-        if (technician.Role != UserRole.Technician)
-        {
-            throw new ForbiddenException(
-                "Kullanıcı teknik personel rolünde değildir.");
-        }
-
-        ticket.PutOnHold(
-            request.Reason,
-            currentUserId);
-
-        await _ticketRepository.SaveChangesAsync(
+            currentUserRole,
+            request,
             cancellationToken);
-
-        return MapToDto(
-            ticket,
-            assignedTechnician: technician);
     }
 
     /// <summary>
@@ -162,59 +51,11 @@ public sealed partial class TicketService
         UserRole currentUserRole,
         CancellationToken cancellationToken = default)
     {
-        EnsureValidId(
+        return await _ticketTechnicianLifecycleService.ResumeAsync(
             id,
-            "Geçerli bir talep kimliği gereklidir.");
-
-        EnsureValidId(
             currentUserId,
-            "Geçerli bir kullanıcı kimliği gereklidir.");
-
-        EnsureSupportedRole(currentUserRole);
-
-        if (currentUserRole != UserRole.Technician)
-        {
-            throw new ForbiddenException(
-                "Yalnızca teknik personel talepte işleme devam edebilir.");
-        }
-
-        var ticket =
-            await _ticketRepository.GetByIdAsync(
-                id,
-                cancellationToken);
-
-        if (ticket is null)
-        {
-            throw new KeyNotFoundException(
-                "Talep bulunamadı.");
-        }
-
-        var technician =
-            await _userRepository.GetByIdAsync(
-                currentUserId,
-                cancellationToken);
-
-        if (technician is null)
-        {
-            throw new KeyNotFoundException(
-                "Teknik personel bulunamadı.");
-        }
-
-        if (!technician.IsActive)
-        {
-            throw new ForbiddenException(
-                "Pasif teknik personel talepte işleme devam edemez.");
-        }
-
-        ticket.Resume(
-            currentUserId);
-
-        await _ticketRepository.SaveChangesAsync(
+            currentUserRole,
             cancellationToken);
-
-        return MapToDto(
-            ticket,
-            assignedTechnician: technician);
     }
 
     /// <summary>
@@ -228,69 +69,11 @@ public sealed partial class TicketService
         ResolveTicketRequest request,
         CancellationToken cancellationToken = default)
     {
-        EnsureValidId(
+        return await _ticketTechnicianLifecycleService.ResolveAsync(
             id,
-            "Geçerli bir talep kimliği gereklidir.");
-
-        EnsureValidId(
             currentUserId,
-            "Geçerli bir kullanıcı kimliği gereklidir.");
-
-        EnsureSupportedRole(currentUserRole);
-
-        if (currentUserRole != UserRole.Technician)
-        {
-            throw new ForbiddenException(
-                "Yalnızca teknik personel talepleri çözebilir.");
-        }
-
-        ArgumentNullException.ThrowIfNull(request);
-
-        var ticket =
-            await _ticketRepository.GetByIdAsync(
-                id,
-                cancellationToken);
-
-        if (ticket is null)
-        {
-            throw new KeyNotFoundException(
-                "Talep bulunamadı.");
-        }
-
-        var technician =
-            await _userRepository.GetByIdAsync(
-                currentUserId,
-                cancellationToken);
-
-        if (technician is null)
-        {
-            throw new KeyNotFoundException(
-                "Teknik personel bulunamadı.");
-        }
-
-        if (!technician.IsActive)
-        {
-            throw new ForbiddenException(
-                "Pasif teknik personel talepleri çözemez.");
-        }
-
-        if (technician.Role != UserRole.Technician)
-        {
-            throw new ForbiddenException(
-                "Kullanıcı teknik personel rolünde değildir.");
-        }
-
-        // Ticket entity'si durumun InProgress olduğunu ve işlemi yapan
-        // kullanıcının atanmış teknisyen olduğunu ayrıca doğrular.
-        ticket.Resolve(
-            request.ResolutionDescription,
-            currentUserId);
-
-        await _ticketRepository.SaveChangesAsync(
+            currentUserRole,
+            request,
             cancellationToken);
-
-        return MapToDto(
-            ticket,
-            assignedTechnician: technician);
     }
 }

@@ -39,14 +39,12 @@ public sealed partial class TicketServiceTests
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
-                },
-                NoOpAuditLogService);
+                });
 
         var result =
             await service.StartProgressAsync(
@@ -78,11 +76,9 @@ CreateTicketService(
             new FakeTicketRepository();
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.StartProgressAsync(
@@ -121,14 +117,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.StartProgressAsync(
@@ -171,14 +165,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = differentTechnician
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.StartProgressAsync(
@@ -229,14 +221,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
-                },
-                NoOpAuditLogService);
+                });
 
         var result =
             await service.PutOnHoldAsync(
@@ -268,11 +258,9 @@ CreateTicketService(
             new FakeTicketRepository();
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.PutOnHoldAsync(
@@ -327,14 +315,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
-                },
-                NoOpAuditLogService);
+                });
 
         var result =
             await service.ResumeAsync(
@@ -387,14 +373,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = differentTechnician
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.ResumeAsync(
@@ -441,14 +425,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
-                },
-                NoOpAuditLogService);
+                });
 
         var result =
             await service.ResolveAsync(
@@ -488,11 +470,9 @@ CreateTicketService(
             new FakeTicketRepository();
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.ResolveAsync(
@@ -539,14 +519,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.ResolveAsync(
@@ -593,14 +571,12 @@ CreateTicketService(
             };
 
         var service =
-CreateTicketService(
+new TicketTechnicianLifecycleService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = differentTechnician
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.ResolveAsync(
