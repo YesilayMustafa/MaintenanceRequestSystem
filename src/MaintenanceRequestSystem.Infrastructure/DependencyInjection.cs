@@ -53,7 +53,6 @@ public static class DependencyInjection
         services.AddScoped<
             ITicketAdministrationService,
             TicketAdministrationService>();
-        services.AddScoped<ITicketService, TicketService>();
         services.AddScoped<
             IAuditLogRepository,
             AuditLogRepository>();
