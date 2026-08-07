@@ -34,7 +34,7 @@ public sealed partial class TicketServiceTests
         var auditLogService =
     new FakeAuditLogService();
         var service =
-            new TicketService(
+            CreateTicketService(
                 ticketRepository,
                 new FakeAssetRepository(),
                 new FakeUserRepository
@@ -127,7 +127,7 @@ public sealed partial class TicketServiceTests
             };
 
         var service =
-new TicketService(
+CreateTicketService(
                 ticketRepository,
                 new FakeAssetRepository(),
                 new FakeUserRepository
@@ -175,7 +175,7 @@ new TicketService(
             };
 
         var service =
-new TicketService(
+CreateTicketService(
                 ticketRepository,
                 new FakeAssetRepository(),
                 new FakeUserRepository
@@ -220,7 +220,7 @@ new TicketService(
             };
 
         var service =
-new TicketService(
+CreateTicketService(
                 ticketRepository,
                 new FakeAssetRepository(),
                 new FakeUserRepository

@@ -19,6 +19,8 @@ public sealed partial class TicketService : ITicketService
     private readonly IAssetRepository _assetRepository;
     private readonly IUserRepository _userRepository;
     private readonly IAuditLogService _auditLogService;
+    private readonly ITicketQueryService _ticketQueryService;
+    private readonly ITicketCreationService _ticketCreationService;
 
 
 
@@ -27,16 +29,26 @@ public sealed partial class TicketService : ITicketService
         ITicketRepository ticketRepository,
         IAssetRepository assetRepository,
         IUserRepository userRepository,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        ITicketQueryService ticketQueryService,
+        ITicketCreationService ticketCreationService)
     {
         _ticketRepository = ticketRepository;
         _assetRepository = assetRepository;
         _userRepository = userRepository;
 
         ArgumentNullException.ThrowIfNull(auditLogService);
+        ArgumentNullException.ThrowIfNull(ticketQueryService);
+        ArgumentNullException.ThrowIfNull(ticketCreationService);
 
         _auditLogService =
             auditLogService;
+
+        _ticketQueryService =
+            ticketQueryService;
+
+        _ticketCreationService =
+            ticketCreationService;
     }
 
 
@@ -53,23 +65,16 @@ public sealed partial class TicketService : ITicketService
     Guid id,
     string errorMessage)
     {
-        if (id == Guid.Empty)
-        {
-            throw new RequestValidationException(
-                errorMessage);
-        }
+        TicketServiceGuards.EnsureValidId(
+            id,
+            errorMessage);
     }
 
     private static void EnsureSupportedRole(
         UserRole role)
     {
-        if (!Enum.IsDefined(
-                typeof(UserRole),
-                role))
-        {
-            throw new ForbiddenException(
-                "Desteklenmeyen kullanıcı rolü.");
-        }
+        TicketServiceGuards.EnsureSupportedRole(
+            role);
     }
 
     private static TicketDto MapToDto(
@@ -78,35 +83,11 @@ public sealed partial class TicketService : ITicketService
         User? createdByUser = null,
         User? assignedTechnician = null)
     {
-
-        var ticketAssignedTechnician =
-    assignedTechnician ??
-    ticket.AssignedTechnician;
-        var ticketAsset =
-            asset ?? ticket.Asset;
-
-        var ticketCreator =
-            createdByUser ?? ticket.CreatedByUser;
-
-        return new TicketDto(
-            ticket.Id,
-            ticket.Title,
-            ticket.Description,
-            ticket.Priority.ToString(),
-            ticket.Status.ToString(),
-            ticket.AssetId,
-            ticketAsset.Name,
-            ticketAsset.SerialNumber,
-            ticket.CreatedByUserId,
-            ticketCreator.FullName,
-            ticket.AssignedTechnicianId,
-            ticketAssignedTechnician?.FullName,
-            ticket.WaitingReason,
-            ticket.ResolutionDescription,
-            ticket.CreatedAt,
-            ticket.UpdatedAt,
-            ticket.ResolvedAt,
-            ticket.ClosedAt);
+        return TicketDtoMapper.MapToDto(
+            ticket,
+            asset,
+            createdByUser,
+            assignedTechnician);
     }
 
 

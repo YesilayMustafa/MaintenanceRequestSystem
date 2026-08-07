@@ -5,6 +5,7 @@ using MaintenanceRequestSystem.Application.AuditLogs.Services;
 using MaintenanceRequestSystem.Application.Common.Models;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
+using MaintenanceRequestSystem.Application.Tickets.Services;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
@@ -15,6 +16,26 @@ public sealed partial class TicketServiceTests
 {
     private static readonly IAuditLogService NoOpAuditLogService =
         new NullAuditLogService();
+
+    private static TicketService CreateTicketService(
+        ITicketRepository ticketRepository,
+        IAssetRepository assetRepository,
+        IUserRepository userRepository,
+        IAuditLogService auditLogService)
+    {
+        return new TicketService(
+            ticketRepository,
+            assetRepository,
+            userRepository,
+            auditLogService,
+            new TicketQueryService(
+                ticketRepository,
+                userRepository),
+            new TicketCreationService(
+                ticketRepository,
+                assetRepository,
+                userRepository));
+    }
 
     private static CreateTicketRequest CreateRequest(
         Guid assetId)

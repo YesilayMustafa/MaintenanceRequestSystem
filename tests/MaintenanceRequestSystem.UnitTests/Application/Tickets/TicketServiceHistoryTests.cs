@@ -41,14 +41,12 @@ public sealed partial class TicketServiceTests
             };
 
         var service =
-new TicketService(
+new TicketQueryService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = admin
-                },
-                NoOpAuditLogService);
+                });
 
         var result =
             await service.GetHistoryAsync(
@@ -95,14 +93,12 @@ new TicketService(
             };
 
         var service =
-new TicketService(
+new TicketQueryService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = creator
-                },
-                NoOpAuditLogService);
+                });
 
         var result =
             await service.GetHistoryAsync(
@@ -147,14 +143,12 @@ new TicketService(
             };
 
         var service =
-new TicketService(
+new TicketQueryService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = technician
-                },
-                NoOpAuditLogService);
+                });
 
         var result =
             await service.GetHistoryAsync(
@@ -190,14 +184,12 @@ new TicketService(
             };
 
         var service =
-new TicketService(
+new TicketQueryService(
                 ticketRepository,
-                new FakeAssetRepository(),
                 new FakeUserRepository
                 {
                     UserById = differentEmployee
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.GetHistoryAsync(

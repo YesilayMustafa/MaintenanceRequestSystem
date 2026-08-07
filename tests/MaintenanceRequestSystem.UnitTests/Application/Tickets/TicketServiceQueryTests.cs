@@ -18,7 +18,7 @@ public sealed partial class TicketServiceTests
             new FakeTicketRepository();
 
         var service =
-            new TicketService(
+            new TicketCreationService(
                 ticketRepository,
                 new FakeAssetRepository
                 {
@@ -27,8 +27,7 @@ public sealed partial class TicketServiceTests
                 new FakeUserRepository
                 {
                     UserById = user
-                },
-                NoOpAuditLogService);
+                });
 
         var request =
             new CreateTicketRequest
@@ -87,11 +86,9 @@ public sealed partial class TicketServiceTests
     public async Task GetByIdAsync_WithUnsupportedRole_ThrowsForbiddenException()
     {
         var service =
-new TicketService(
+new TicketQueryService(
                 new FakeTicketRepository(),
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.GetByIdAsync(
@@ -104,11 +101,9 @@ new TicketService(
     public async Task GetPagedAsync_WithUndefinedStatus_ThrowsValidationException()
     {
         var service =
-new TicketService(
+new TicketQueryService(
                 new FakeTicketRepository(),
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         var query =
             new TicketListQuery
@@ -129,11 +124,9 @@ new TicketService(
     public async Task GetPagedAsync_WithOverflowingOffset_ThrowsValidationException()
     {
         var service =
-new TicketService(
+new TicketQueryService(
                 new FakeTicketRepository(),
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         var query =
             new TicketListQuery
@@ -153,11 +146,10 @@ new TicketService(
     public async Task CreateAsync_WithEmptyAssetId_ThrowsValidationException()
     {
         var service =
-new TicketService(
+new TicketCreationService(
                 new FakeTicketRepository(),
                 new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         var request =
             new CreateTicketRequest
@@ -178,7 +170,7 @@ new TicketService(
     public async Task CreateAsync_WithMissingUser_ThrowsKeyNotFoundException()
     {
         var service =
-new TicketService(
+new TicketCreationService(
                 new FakeTicketRepository(),
                 new FakeAssetRepository
                 {
@@ -187,8 +179,7 @@ new TicketService(
                 new FakeUserRepository
                 {
                     UserById = null
-                },
-                NoOpAuditLogService);
+                });
 
         var request =
             CreateRequest(
@@ -210,7 +201,7 @@ new TicketService(
             new FakeTicketRepository();
 
         var service =
-new TicketService(
+new TicketCreationService(
                 ticketRepository,
                 new FakeAssetRepository
                 {
@@ -219,8 +210,7 @@ new TicketService(
                 new FakeUserRepository
                 {
                     UserById = user
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.CreateAsync(
@@ -243,7 +233,7 @@ new TicketService(
             new FakeTicketRepository();
 
         var service =
-new TicketService(
+new TicketCreationService(
                 ticketRepository,
                 new FakeAssetRepository
                 {
@@ -252,8 +242,7 @@ new TicketService(
                 new FakeUserRepository
                 {
                     UserById = user
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.CreateAsync(
@@ -279,7 +268,7 @@ new TicketService(
             new FakeTicketRepository();
 
         var service =
-new TicketService(
+new TicketCreationService(
                 ticketRepository,
                 new FakeAssetRepository
                 {
@@ -288,8 +277,7 @@ new TicketService(
                 new FakeUserRepository
                 {
                     UserById = user
-                },
-                NoOpAuditLogService);
+                });
 
         await Assert.ThrowsAsync<RequestValidationException>(
             () => service.CreateAsync(
@@ -307,14 +295,12 @@ new TicketService(
     public async Task GetByIdAsync_WithMissingTicket_ThrowsKeyNotFoundException()
     {
         var service =
-new TicketService(
+new TicketQueryService(
                 new FakeTicketRepository
                 {
                     TicketById = null
                 },
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.GetByIdAsync(
@@ -338,14 +324,12 @@ new TicketService(
                 TicketPriority.High);
 
         var service =
-new TicketService(
+new TicketQueryService(
                 new FakeTicketRepository
                 {
                     TicketById = ticket
                 },
-                new FakeAssetRepository(),
-                new FakeUserRepository(),
-                NoOpAuditLogService);
+                new FakeUserRepository());
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.GetByIdAsync(
