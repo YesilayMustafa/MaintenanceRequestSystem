@@ -1,5 +1,4 @@
 import {
-    createContext,
     useCallback,
     useEffect,
     useState,
@@ -15,22 +14,13 @@ import type {
     AuthenticatedUser,
     LoginRequest,
 } from "../types/auth";
+import {
+    AuthContext,
+    type AuthContextValue,
+} from "./AuthContext";
 
 const TOKEN_KEY = "mrs_access_token";
 const EXPIRES_AT_KEY = "mrs_expires_at";
-
-export interface AuthContextValue {
-    user: AuthenticatedUser | null;
-    token: string | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-    login: (request: LoginRequest) => Promise<void>;
-    logout: () => void;
-}
-
-export const AuthContext = createContext<AuthContextValue | undefined>(
-    undefined
-);
 
 interface AuthProviderProps {
     children: ReactNode;

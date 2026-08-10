@@ -1,8 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-if (!API_BASE_URL) {
-    throw new Error("VITE_API_BASE_URL tanımlı değil.");
-}
+const API_BASE_URL = normalizeBaseUrl(
+    import.meta.env.VITE_API_BASE_URL
+);
 
 export interface ProblemDetails {
     status?: number;
@@ -49,7 +47,7 @@ export async function apiRequest<T>(
         requestHeaders.set("Authorization", `Bearer ${token}`);
     }
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(buildApiUrl(path), {
         ...requestOptions,
         headers: requestHeaders,
     });
@@ -77,4 +75,16 @@ export async function apiRequest<T>(
     }
 
     return (await response.json()) as T;
+}
+
+function normalizeBaseUrl(value: string | undefined): string {
+    return value?.trim().replace(/\/+$/, "") ?? "";
+}
+
+function buildApiUrl(path: string): string {
+    const normalizedPath = path.startsWith("/")
+        ? path
+        : `/${path}`;
+
+    return `${API_BASE_URL}${normalizedPath}`;
 }
