@@ -40,6 +40,15 @@ export interface TicketDto {
     closedAt: string | null;
 }
 
+export interface TicketHistoryDto {
+    id: string;
+    performedByUserId: string;
+    oldStatus: string | null;
+    newStatus: string;
+    description: string;
+    occurredAt: string;
+}
+
 export interface TicketListQuery {
     pageNumber?: number;
     pageSize?: number;

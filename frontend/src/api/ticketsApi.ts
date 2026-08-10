@@ -4,6 +4,7 @@ import type { PagedResult } from "../types/pagination";
 import type {
     TicketDto,
     TicketListQuery,
+    TicketHistoryDto,
 } from "../types/tickets";
 
 export function getTickets(
@@ -46,6 +47,33 @@ export function getTickets(
 
     return apiRequest<PagedResult<TicketDto>>(
         `/api/tickets?${searchParams.toString()}`,
+        {
+            method: "GET",
+            token,
+        }
+    );
+
+}
+
+export function getTicketById(
+    token: string,
+    id: string
+): Promise<TicketDto> {
+    return apiRequest<TicketDto>(
+        `/api/tickets/${id}`,
+        {
+            method: "GET",
+            token,
+        }
+    );
+}
+
+export function getTicketHistory(
+    token: string,
+    id: string
+): Promise<TicketHistoryDto[]> {
+    return apiRequest<TicketHistoryDto[]>(
+        `/api/tickets/${id}/history`,
         {
             method: "GET",
             token,

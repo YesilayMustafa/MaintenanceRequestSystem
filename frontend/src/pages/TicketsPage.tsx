@@ -5,6 +5,7 @@ import { getTickets } from "../api/ticketsApi";
 import { useAuth } from "../auth/useAuth";
 
 import type { TicketDto } from "../types/tickets";
+import { Link } from "react-router-dom";
 
 export function TicketsPage() {
     const { user, token, logout } = useAuth();
@@ -106,7 +107,11 @@ export function TicketsPage() {
                     <tbody>
                         {tickets.map((ticket) => (
                             <tr key={ticket.id}>
-                                <td>{ticket.title}</td>
+                                <td>
+                                    <Link to={`/tickets/${ticket.id}`}>
+                                        {ticket.title}
+                                    </Link>
+                                </td>
                                 <td>{ticket.status}</td>
                                 <td>{ticket.priority}</td>
                                 <td>{ticket.assetName}</td>
