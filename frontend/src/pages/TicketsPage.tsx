@@ -78,6 +78,12 @@ export function TicketsPage() {
 
             <h2>Talep Listesi</h2>
 
+            <p>
+                <Link to="/tickets/new">
+                    Yeni Talep Oluştur
+                </Link>
+            </p>
+
             {isLoading && <p>Ticketlar yükleniyor...</p>}
 
             {error && (

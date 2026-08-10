@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { LoginPage } from "../pages/LoginPage";
+import { CreateTicketPage } from "../pages/CreateTicketPage";
 import { TicketsPage } from "../pages/TicketsPage";
 import { TicketDetailsPage } from "../pages/TicketDetailsPage";
 
@@ -22,6 +23,15 @@ export function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <TicketsPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/tickets/new"
+                element={
+                    <ProtectedRoute>
+                        <CreateTicketPage />
                     </ProtectedRoute>
                 }
             />

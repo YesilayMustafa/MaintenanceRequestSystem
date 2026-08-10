@@ -4,6 +4,7 @@ import type { PagedResult } from "../types/pagination";
 import type {
     AssignTicketRequest,
     ChangeTicketPriorityRequest,
+    CreateTicketRequest,
     PutTicketOnHoldRequest,
     ReopenTicketRequest,
     ResolveTicketRequest,
@@ -11,6 +12,20 @@ import type {
     TicketHistoryDto,
     TicketListQuery,
 } from "../types/tickets";
+
+export function createTicket(
+    token: string,
+    request: CreateTicketRequest
+): Promise<TicketDto> {
+    return apiRequest<TicketDto>(
+        "/api/tickets",
+        {
+            method: "POST",
+            token,
+            body: JSON.stringify(request),
+        }
+    );
+}
 
 export function getTickets(
     token: string,

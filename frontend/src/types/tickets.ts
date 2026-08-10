@@ -71,6 +71,13 @@ export interface ChangeTicketPriorityRequest {
     priority: TicketPriorityValue;
 }
 
+export interface CreateTicketRequest {
+    assetId: string;
+    title: string;
+    description: string;
+    priority: TicketPriorityValue;
+}
+
 export interface TicketListQuery {
     pageNumber?: number;
     pageSize?: number;
