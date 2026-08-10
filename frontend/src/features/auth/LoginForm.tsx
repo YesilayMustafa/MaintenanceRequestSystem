@@ -39,8 +39,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     }
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div>
+        <form className="login-form" onSubmit={handleSubmit}>
+            <div className="form-group">
                 <label htmlFor="email">E-posta</label>
                 <input
                     id="email"
@@ -52,7 +52,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 />
             </div>
 
-            <div>
+            <div className="form-group">
                 <label htmlFor="password">Şifre</label>
                 <input
                     id="password"
@@ -64,9 +64,15 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                 />
             </div>
 
-            {error && <p role="alert">{error}</p>}
+            {error && (
+                <p className="error-state" role="alert">{error}</p>
+            )}
 
-            <button type="submit" disabled={isSubmitting}>
+            <button
+                type="submit"
+                className="button button-primary"
+                disabled={isSubmitting}
+            >
                 {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
         </form>

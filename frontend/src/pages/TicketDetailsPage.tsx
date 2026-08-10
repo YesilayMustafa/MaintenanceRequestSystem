@@ -4,6 +4,7 @@ import {
     type SubmitEvent,
 } from "react";
 import {
+    Link,
     useNavigate,
     useParams,
 } from "react-router-dom";
@@ -18,6 +19,10 @@ import {
     getTicketHistory,
 } from "../api/ticketsApi";
 import { useAuth } from "../auth/useAuth";
+import {
+    TicketPriorityBadge,
+    TicketStatusBadge,
+} from "../components/TicketBadges";
 import { TicketActions } from "../features/tickets/TicketActions";
 
 import type { TicketCommentDto } from "../types/comments";
@@ -145,121 +150,161 @@ export function TicketDetailsPage() {
     }
 
     if (isLoading) {
-        return <p>Ticket yükleniyor...</p>;
+        return <p className="loading-state">Ticket yükleniyor...</p>;
     }
 
     if (error) {
-        return <p role="alert">{error}</p>;
+        return <p className="error-state" role="alert">{error}</p>;
     }
 
     if (!ticket) {
-        return <p>Ticket bulunamadı.</p>;
+        return <p className="empty-state">Ticket bulunamadı.</p>;
     }
 
     return (
-        <main>
-            <h1>{ticket.title}</h1>
+        <div className="page">
+            <header className="page-header">
+                <div>
+                    <Link to="/tickets" className="table-link">
+                        ← Talep listesine dön
+                    </Link>
+                    <h1 className="page-title">{ticket.title}</h1>
+                    <div className="page-header-actions">
+                        <TicketStatusBadge status={ticket.status} />
+                        <TicketPriorityBadge priority={ticket.priority} />
+                    </div>
+                </div>
+            </header>
 
-            <p><strong>Durum:</strong> {ticket.status}</p>
-            <p><strong>Öncelik:</strong> {ticket.priority}</p>
-            <p><strong>Açıklama:</strong> {ticket.description}</p>
+            <div className="details-grid">
+                <div className="details-stack">
+                    <section className="card" aria-labelledby="ticket-info-title">
+                        <div className="card-header">
+                            <h2 id="ticket-info-title">Talep Bilgileri</h2>
+                        </div>
 
-            <p>
-                <strong>Cihaz:</strong>{" "}
-                {ticket.assetName} ({ticket.assetSerialNumber})
-            </p>
+                        <h3>Açıklama</h3>
+                        <p className="description-text">{ticket.description}</p>
 
-            <p>
-                <strong>Oluşturan:</strong>{" "}
-                {ticket.createdByFullName}
-            </p>
+                        <dl className="definition-grid">
+                            <div className="definition-item">
+                                <dt>Cihaz</dt>
+                                <dd>{ticket.assetName}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Seri Numarası</dt>
+                                <dd>{ticket.assetSerialNumber}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Oluşturan</dt>
+                                <dd>{ticket.createdByFullName}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Atanan Teknik Personel</dt>
+                                <dd>
+                                    {ticket.assignedTechnicianFullName ?? (
+                                        <span className="muted-text">Atanmadı</span>
+                                    )}
+                                </dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Oluşturulma</dt>
+                                <dd>
+                                    {new Date(ticket.createdAt)
+                                        .toLocaleString("tr-TR")}
+                                </dd>
+                            </div>
+                            {ticket.updatedAt && (
+                                <div className="definition-item">
+                                    <dt>Son Güncelleme</dt>
+                                    <dd>
+                                        {new Date(ticket.updatedAt)
+                                            .toLocaleString("tr-TR")}
+                                    </dd>
+                                </div>
+                            )}
+                            {ticket.waitingReason && (
+                                <div className="definition-item form-group-full">
+                                    <dt>Bekleme Nedeni</dt>
+                                    <dd>{ticket.waitingReason}</dd>
+                                </div>
+                            )}
+                            {ticket.resolutionDescription && (
+                                <div className="definition-item form-group-full">
+                                    <dt>Çözüm Açıklaması</dt>
+                                    <dd>{ticket.resolutionDescription}</dd>
+                                </div>
+                            )}
+                        </dl>
+                    </section>
 
-            <p>
-                <strong>Teknisyen:</strong>{" "}
-                {ticket.assignedTechnicianFullName ?? "Atanmadı"}
-            </p>
-
-            <p>
-                <strong>Oluşturulma:</strong>{" "}
-                {new Date(ticket.createdAt).toLocaleString("tr-TR")}
-            </p>
-
-            {ticket.waitingReason && (
-                <p>
-                    <strong>Bekleme Nedeni:</strong>{" "}
-                    {ticket.waitingReason}
-                </p>
-            )}
-
-            {ticket.resolutionDescription && (
-                <p>
-                    <strong>Çözüm Açıklaması:</strong>{" "}
-                    {ticket.resolutionDescription}
-                </p>
-            )}
-
-            {user && token && (
-                <TicketActions
-                    ticket={ticket}
-                    user={user}
-                    token={token}
-                    onTicketUpdated={handleTicketUpdated}
-                    onSoftDeleted={() => navigate("/tickets")}
-                />
-            )}
-
-            <section>
-                <h2>Ticket Geçmişi</h2>
+                    <section className="card" aria-labelledby="history-title">
+                        <div className="card-header">
+                            <h2 id="history-title">Talep Geçmişi</h2>
+                        </div>
 
                 {history.length === 0 ? (
-                    <p>Geçmiş kaydı bulunamadı.</p>
+                            <p className="empty-state">Geçmiş kaydı bulunamadı.</p>
                 ) : (
-                    <ul>
+                            <ol className="timeline">
                         {history.map((historyItem) => (
-                            <li key={historyItem.id}>
-                                <p>
+                                    <li
+                                        className="timeline-item"
+                                        key={historyItem.id}
+                                    >
+                                        <p className="timeline-title">
                                     <strong>
                                         {historyItem.oldStatus ?? "Başlangıç"}
-                                        {" → "}
+                                                {" → "}
                                         {historyItem.newStatus}
                                     </strong>
                                 </p>
 
-                                <p>{historyItem.description}</p>
+                                        <p className="timeline-description">
+                                            {historyItem.description}
+                                        </p>
 
-                                <p>
+                                        <p className="timeline-date">
                                     {new Date(
                                         historyItem.occurredAt
                                     ).toLocaleString("tr-TR")}
                                 </p>
                             </li>
                         ))}
-                    </ul>
+                            </ol>
                 )}
             </section>
 
-            <section>
-                <h2>Yorumlar</h2>
+                    <section className="card" aria-labelledby="comments-title">
+                        <div className="card-header">
+                            <h2 id="comments-title">Yorumlar</h2>
+                        </div>
 
                 {comments.length === 0 ? (
-                    <p>Henüz yorum bulunmuyor.</p>
+                            <p className="empty-state">Henüz yorum bulunmuyor.</p>
                 ) : (
-                    <ul>
+                            <ul className="comment-list">
                         {comments.map((comment) => (
-                            <li key={comment.id}>
-                                <p>
-                                    <strong>{comment.userFullName}</strong>
-                                    {" — "}
-                                    {comment.userRole}
-                                </p>
-
-                                <p>{comment.content}</p>
-
-                                <p>
+                                    <li className="comment-item" key={comment.id}>
+                                        <div className="comment-meta">
+                                            <div>
+                                                <strong className="comment-author">
+                                                    {comment.userFullName}
+                                                </strong>
+                                                <span className="comment-role">
+                                                    {comment.userRole}
+                                                </span>
+                                            </div>
+                                            <p className="comment-date">
                                     {new Date(
                                         comment.createdAt
                                     ).toLocaleString("tr-TR")}
-                                </p>
+                                            </p>
+                                        </div>
+
+                                        <p className="comment-content">
+                                            {comment.content}
+                                        </p>
                             </li>
                         ))}
                     </ul>
@@ -267,7 +312,10 @@ export function TicketDetailsPage() {
 
                 {ticket.status !== "Closed" &&
                     ticket.status !== "Cancelled" && (
-                        <form onSubmit={handleCommentSubmit}>
+                                <form
+                                    className="comment-form"
+                                    onSubmit={handleCommentSubmit}
+                                >
                             <label htmlFor="comment-content">
                                 Yeni Yorum
                             </label>
@@ -281,24 +329,43 @@ export function TicketDetailsPage() {
                                 disabled={isCommentSubmitting}
                             />
 
-                            <button
-                                type="submit"
-                                disabled={
-                                    isCommentSubmitting ||
-                                    !commentContent.trim()
-                                }
-                            >
-                                {isCommentSubmitting
-                                    ? "Gönderiliyor..."
-                                    : "Yorum Ekle"}
-                            </button>
+                                    <div className="form-actions">
+                                        <button
+                                            type="submit"
+                                            className="button button-primary"
+                                            disabled={
+                                                isCommentSubmitting ||
+                                                !commentContent.trim()
+                                            }
+                                        >
+                                            {isCommentSubmitting
+                                                ? "Gönderiliyor..."
+                                                : "Yorum Ekle"}
+                                        </button>
+                                    </div>
 
                             {commentError && (
-                                <p role="alert">{commentError}</p>
+                                        <p className="error-state" role="alert">
+                                            {commentError}
+                                        </p>
                             )}
                         </form>
                     )}
             </section>
-        </main>
+                </div>
+
+                <aside>
+                    {user && token && (
+                        <TicketActions
+                            ticket={ticket}
+                            user={user}
+                            token={token}
+                            onTicketUpdated={handleTicketUpdated}
+                            onSoftDeleted={() => navigate("/tickets")}
+                        />
+                    )}
+                </aside>
+            </div>
+        </div>
     );
 }

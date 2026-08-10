@@ -13,7 +13,6 @@ import {
 import { getDepartments } from "../api/departmentsApi";
 import { ApiError } from "../api/httpClient";
 import { useAuth } from "../auth/useAuth";
-import { AppNavigation } from "../components/AppNavigation";
 
 import type {
     AssetDto,
@@ -255,8 +254,7 @@ export function AssetsPage() {
     }
 
     return (
-        <main>
-            <AppNavigation />
+        <div className="page admin-page">
 
             <h1>Cihazlar</h1>
 
@@ -460,7 +458,7 @@ export function AssetsPage() {
                     </tbody>
                 </table>
             )}
-        </main>
+        </div>
     );
 }
 

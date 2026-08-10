@@ -8,7 +8,6 @@ import { getAuditLogs } from "../api/auditLogsApi";
 import { ApiError } from "../api/httpClient";
 import { getUsers } from "../api/usersApi";
 import { useAuth } from "../auth/useAuth";
-import { AppNavigation } from "../components/AppNavigation";
 
 import type { AuditLogDto } from "../types/audit";
 import type { PagedResult } from "../types/pagination";
@@ -150,8 +149,7 @@ export function AuditLogsPage() {
     }
 
     return (
-        <main>
-            <AppNavigation />
+        <div className="page admin-page">
 
             <h1>Audit Logları</h1>
 
@@ -354,7 +352,7 @@ export function AuditLogsPage() {
                     </button>
                 </>
             )}
-        </main>
+        </div>
     );
 }
 

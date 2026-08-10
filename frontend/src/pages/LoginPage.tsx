@@ -17,7 +17,11 @@ export function LoginPage() {
     const returnPath = state?.from?.pathname ?? "/tickets";
 
     if (isLoading) {
-        return <p>Oturum kontrol ediliyor...</p>;
+        return (
+            <main className="login-page">
+                <p className="loading-state">Oturum kontrol ediliyor...</p>
+            </main>
+        );
     }
 
     if (isAuthenticated) {
@@ -29,12 +33,19 @@ export function LoginPage() {
     }
 
     return (
-        <main>
-            <h1>Arıza ve Bakım Talep Yönetim Sistemi</h1>
+        <main className="login-page">
+            <section className="login-card" aria-labelledby="login-title">
+                <div className="login-brand">
+                    <span className="login-brand-mark" aria-hidden="true">M</span>
+                    <h1 id="login-title">Maintenance Desk</h1>
+                    <p>
+                        Arıza ve bakım taleplerini yönetmek için hesabınızla
+                        giriş yapın.
+                    </p>
+                </div>
 
-            <p>Devam etmek için hesabınızla giriş yapın.</p>
-
-            <LoginForm onSuccess={handleLoginSuccess} />
+                <LoginForm onSuccess={handleLoginSuccess} />
+            </section>
         </main>
     );
 }

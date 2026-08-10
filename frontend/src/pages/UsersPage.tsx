@@ -14,7 +14,6 @@ import {
     updateUser,
 } from "../api/usersApi";
 import { useAuth } from "../auth/useAuth";
-import { AppNavigation } from "../components/AppNavigation";
 
 import type { UserRole } from "../types/auth";
 import type { DepartmentDto } from "../types/departments";
@@ -264,8 +263,7 @@ export function UsersPage() {
     }
 
     return (
-        <main>
-            <AppNavigation />
+        <div className="page admin-page">
 
             <h1>Kullanıcılar</h1>
 
@@ -489,7 +487,7 @@ export function UsersPage() {
                     </tbody>
                 </table>
             )}
-        </main>
+        </div>
     );
 }
 

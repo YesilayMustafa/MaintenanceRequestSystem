@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { RoleRoute } from "../auth/RoleRoute";
+import { AppLayout } from "../components/layout/AppLayout";
 import { AuditLogsPage } from "../pages/AuditLogsPage";
 import { AssetsPage } from "../pages/AssetsPage";
 import { DepartmentsPage } from "../pages/DepartmentsPage";
@@ -26,67 +27,34 @@ export function AppRoutes() {
             />
 
             <Route
-                path="/assets"
                 element={
                     <ProtectedRoute>
-                        <AssetsPage />
+                        <AppLayout />
                     </ProtectedRoute>
                 }
-            />
-
-            <Route
-                path="/departments"
-                element={
-                    <ProtectedRoute>
-                        <DepartmentsPage />
-                    </ProtectedRoute>
-                }
-            />
-
-            <Route
-                path="/users"
-                element={
-                    <RoleRoute allowedRoles={[...adminRoles]}>
-                        <UsersPage />
-                    </RoleRoute>
-                }
-            />
-
-            <Route
-                path="/audit-logs"
-                element={
-                    <RoleRoute allowedRoles={[...adminRoles]}>
-                        <AuditLogsPage />
-                    </RoleRoute>
-                }
-            />
-
-            <Route
-                path="/tickets"
-                element={
-                    <ProtectedRoute>
-                        <TicketsPage />
-                    </ProtectedRoute>
-                }
-            />
-
-            <Route
-                path="/tickets/new"
-                element={
-                    <ProtectedRoute>
-                        <CreateTicketPage />
-                    </ProtectedRoute>
-                }
-            />
-
-            <Route
-                path="/tickets/:id"
-                element={
-                    <ProtectedRoute>
-                        <TicketDetailsPage />
-                    </ProtectedRoute>
-                }
-            />
+            >
+                <Route path="/assets" element={<AssetsPage />} />
+                <Route path="/departments" element={<DepartmentsPage />} />
+                <Route
+                    path="/users"
+                    element={
+                        <RoleRoute allowedRoles={[...adminRoles]}>
+                            <UsersPage />
+                        </RoleRoute>
+                    }
+                />
+                <Route
+                    path="/audit-logs"
+                    element={
+                        <RoleRoute allowedRoles={[...adminRoles]}>
+                            <AuditLogsPage />
+                        </RoleRoute>
+                    }
+                />
+                <Route path="/tickets" element={<TicketsPage />} />
+                <Route path="/tickets/new" element={<CreateTicketPage />} />
+                <Route path="/tickets/:id" element={<TicketDetailsPage />} />
+            </Route>
 
             <Route
                 path="*"

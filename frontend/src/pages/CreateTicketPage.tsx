@@ -3,7 +3,7 @@ import {
     useState,
     type SubmitEvent,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { getAssets } from "../api/assetsApi";
 import { ApiError } from "../api/httpClient";
@@ -142,26 +142,42 @@ export function CreateTicketPage() {
     }
 
     return (
-        <main>
-            <h1>Yeni Talep Oluştur</h1>
+        <div className="page">
+            <header className="page-header">
+                <div>
+                    <h1 className="page-title">Yeni Talep Oluştur</h1>
+                    <p className="page-description">
+                        Arıza veya bakım ihtiyacını ilgili cihazla birlikte kaydedin.
+                    </p>
+                </div>
+                <div className="page-header-actions">
+                    <Link to="/tickets" className="button button-secondary">
+                        Talep Listesine Dön
+                    </Link>
+                </div>
+            </header>
 
             {isAssetsLoading && (
-                <p>Cihazlar yükleniyor...</p>
+                <p className="loading-state">Cihazlar yükleniyor...</p>
             )}
 
             {assetError && (
-                <p role="alert">{assetError}</p>
+                <p className="error-state" role="alert">{assetError}</p>
             )}
 
             {!isAssetsLoading &&
                 !assetError &&
                 activeAssets.length === 0 && (
-                    <p>Aktif cihaz bulunamadı.</p>
+                    <p className="empty-state">Aktif cihaz bulunamadı.</p>
                 )}
 
             {!isAssetsLoading && !assetError && (
-                <form onSubmit={handleSubmit}>
-                    <div>
+                <form
+                    className="card form-card"
+                    onSubmit={handleSubmit}
+                >
+                    <div className="form-grid">
+                    <div className="form-group form-group-full">
                         <label htmlFor="asset-id">Cihaz</label>
 
                         <select
@@ -192,7 +208,7 @@ export function CreateTicketPage() {
                         </select>
                     </div>
 
-                    <div>
+                    <div className="form-group form-group-full">
                         <label htmlFor="ticket-title">Başlık</label>
 
                         <input
@@ -207,7 +223,7 @@ export function CreateTicketPage() {
                         />
                     </div>
 
-                    <div>
+                    <div className="form-group form-group-full">
                         <label htmlFor="ticket-description">
                             Açıklama
                         </label>
@@ -223,7 +239,7 @@ export function CreateTicketPage() {
                         />
                     </div>
 
-                    <div>
+                    <div className="form-group">
                         <label htmlFor="ticket-priority">
                             Öncelik
                         </label>
@@ -246,24 +262,34 @@ export function CreateTicketPage() {
                         </select>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={
-                            isSubmitting ||
-                            activeAssets.length === 0
-                        }
-                    >
-                        {isSubmitting
-                            ? "Oluşturuluyor..."
-                            : "Oluştur"}
-                    </button>
+                    </div>
 
                     {submitError && (
-                        <p role="alert">{submitError}</p>
+                        <p className="error-state" role="alert">
+                            {submitError}
+                        </p>
                     )}
+
+                    <div className="form-actions">
+                        <button
+                            type="submit"
+                            className="button button-primary"
+                            disabled={
+                                isSubmitting ||
+                                activeAssets.length === 0
+                            }
+                        >
+                            {isSubmitting
+                                ? "Oluşturuluyor..."
+                                : "Talebi Oluştur"}
+                        </button>
+                        <Link to="/tickets" className="button button-secondary">
+                            Vazgeç
+                        </Link>
+                    </div>
                 </form>
             )}
-        </main>
+        </div>
     );
 }
 

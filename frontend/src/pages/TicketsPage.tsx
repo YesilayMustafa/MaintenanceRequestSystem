@@ -5,7 +5,10 @@ import { getAssets } from "../api/assetsApi";
 import { ApiError } from "../api/httpClient";
 import { getTickets } from "../api/ticketsApi";
 import { useAuth } from "../auth/useAuth";
-import { AppNavigation } from "../components/AppNavigation";
+import {
+    TicketPriorityBadge,
+    TicketStatusBadge,
+} from "../components/TicketBadges";
 
 import type { AssetDto } from "../types/assets";
 import type { PagedResult } from "../types/pagination";
@@ -58,7 +61,7 @@ const emptyResult: PagedResult<TicketDto> = {
 };
 
 export function TicketsPage() {
-    const { user, token, logout } = useAuth();
+    const { token } = useAuth();
 
     const [result, setResult] = useState(emptyResult);
     const [assets, setAssets] = useState<AssetDto[]>([]);
@@ -167,33 +170,34 @@ export function TicketsPage() {
     }
 
     return (
-        <main>
-            <AppNavigation />
-
-            <h1>Ticketlar</h1>
-
-            <p>
-                Hoş geldin, <strong>{user?.fullName}</strong>
-            </p>
-
-            <p>Rol: {user?.role}</p>
-
-            <button type="button" onClick={logout}>
-                Çıkış Yap
-            </button>
-
-            <hr />
-
-            <h2>Talep Listesi</h2>
-
-            <p>
-                <Link to="/tickets/new">
-                    Yeni Talep Oluştur
-                </Link>
-            </p>
-
-            <section aria-label="Ticket filtreleri">
+        <div className="page">
+            <header className="page-header">
                 <div>
+                    <h1 className="page-title">Talepler</h1>
+                    <p className="page-description">
+                        Bakım ve arıza taleplerini izleyin, filtreleyin ve
+                        yaşam döngüsü boyunca yönetin.
+                    </p>
+                </div>
+                <div className="page-header-actions">
+                    <Link to="/tickets/new" className="button button-primary">
+                        Yeni Talep
+                    </Link>
+                </div>
+            </header>
+
+            <section className="card" aria-labelledby="ticket-filters-title">
+                <div className="card-header">
+                    <div>
+                        <h2 id="ticket-filters-title">Filtreler</h2>
+                        <p className="page-description">
+                            Listeyi desteklenen alanlara göre daraltın ve sıralayın.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="toolbar-grid">
+                    <div className="form-group">
                     <label htmlFor="ticket-status-filter">Durum</label>
                     <select
                         id="ticket-status-filter"
@@ -217,7 +221,7 @@ export function TicketsPage() {
                     </select>
                 </div>
 
-                <div>
+                    <div className="form-group">
                     <label htmlFor="ticket-priority-filter">Öncelik</label>
                     <select
                         id="ticket-priority-filter"
@@ -241,7 +245,7 @@ export function TicketsPage() {
                     </select>
                 </div>
 
-                <div>
+                    <div className="form-group">
                     <label htmlFor="ticket-asset-filter">Cihaz</label>
                     <select
                         id="ticket-asset-filter"
@@ -260,7 +264,7 @@ export function TicketsPage() {
                     </select>
                 </div>
 
-                <div>
+                    <div className="form-group">
                     <label htmlFor="ticket-sort-by">Sıralama</label>
                     <select
                         id="ticket-sort-by"
@@ -278,7 +282,7 @@ export function TicketsPage() {
                     </select>
                 </div>
 
-                <div>
+                    <div className="form-group">
                     <label htmlFor="ticket-sort-direction">Yön</label>
                     <select
                         id="ticket-sort-direction"
@@ -295,7 +299,7 @@ export function TicketsPage() {
                     </select>
                 </div>
 
-                <div>
+                    <div className="form-group">
                     <label htmlFor="ticket-page-size">Sayfa Boyutu</label>
                     <select
                         id="ticket-page-size"
@@ -309,19 +313,26 @@ export function TicketsPage() {
                         <option value={25}>25</option>
                         <option value={50}>50</option>
                     </select>
+                    </div>
                 </div>
             </section>
 
-            {assetError && <p role="alert">{assetError}</p>}
-            {isLoading && <p>Ticketlar yükleniyor...</p>}
-            {error && <p role="alert">{error}</p>}
+            {assetError && (
+                <p className="error-state" role="alert">{assetError}</p>
+            )}
+            {isLoading && (
+                <p className="loading-state">Ticketlar yükleniyor...</p>
+            )}
+            {error && (
+                <p className="error-state" role="alert">{error}</p>
+            )}
 
             {!isLoading && !error && result.items.length === 0 && (
-                <p>Gösterilecek ticket bulunamadı.</p>
+                <p className="empty-state">Gösterilecek ticket bulunamadı.</p>
             )}
 
             {!isLoading && !error && result.items.length > 0 && (
-                <>
+                <div className="table-container">
                     <table>
                         <thead>
                             <tr>
@@ -339,17 +350,29 @@ export function TicketsPage() {
                             {result.items.map((ticket) => (
                                 <tr key={ticket.id}>
                                     <td>
-                                        <Link to={`/tickets/${ticket.id}`}>
+                                        <Link
+                                            to={`/tickets/${ticket.id}`}
+                                            className="table-link"
+                                        >
                                             {ticket.title}
                                         </Link>
                                     </td>
-                                    <td>{ticket.status}</td>
-                                    <td>{ticket.priority}</td>
+                                    <td>
+                                        <TicketStatusBadge status={ticket.status} />
+                                    </td>
+                                    <td>
+                                        <TicketPriorityBadge
+                                            priority={ticket.priority}
+                                        />
+                                    </td>
                                     <td>{ticket.assetName}</td>
                                     <td>{ticket.createdByFullName}</td>
                                     <td>
-                                        {ticket.assignedTechnicianFullName ??
-                                            "Atanmadı"}
+                                        {ticket.assignedTechnicianFullName ?? (
+                                            <span className="muted-text">
+                                                Atanmadı
+                                            </span>
+                                        )}
                                     </td>
                                     <td>
                                         {new Date(ticket.createdAt)
@@ -360,37 +383,42 @@ export function TicketsPage() {
                         </tbody>
                     </table>
 
-                    <p>
-                        Sayfa {result.pageNumber} / {result.totalPages} —
-                        Toplam {result.totalCount} kayıt
-                    </p>
+                    <div className="pagination">
+                        <p className="pagination-summary">
+                            Sayfa {result.pageNumber} / {result.totalPages} —
+                            Toplam {result.totalCount} kayıt
+                        </p>
+                        <div className="pagination-actions">
+                            <button
+                                type="button"
+                                className="button button-secondary button-small"
+                                onClick={() => setPageNumber(
+                                    (currentPage) => currentPage - 1
+                                )}
+                                disabled={isLoading || pageNumber <= 1}
+                            >
+                                Önceki
+                            </button>
 
-                    <button
-                        type="button"
-                        onClick={() => setPageNumber(
-                            (currentPage) => currentPage - 1
-                        )}
-                        disabled={isLoading || pageNumber <= 1}
-                    >
-                        Önceki
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => setPageNumber(
-                            (currentPage) => currentPage + 1
-                        )}
-                        disabled={
-                            isLoading ||
-                            result.totalPages === 0 ||
-                            pageNumber >= result.totalPages
-                        }
-                    >
-                        Sonraki
-                    </button>
-                </>
+                            <button
+                                type="button"
+                                className="button button-secondary button-small"
+                                onClick={() => setPageNumber(
+                                    (currentPage) => currentPage + 1
+                                )}
+                                disabled={
+                                    isLoading ||
+                                    result.totalPages === 0 ||
+                                    pageNumber >= result.totalPages
+                                }
+                            >
+                                Sonraki
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
-        </main>
+        </div>
     );
 }
 

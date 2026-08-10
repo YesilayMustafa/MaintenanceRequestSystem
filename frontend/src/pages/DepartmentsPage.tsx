@@ -12,7 +12,6 @@ import {
 } from "../api/departmentsApi";
 import { ApiError } from "../api/httpClient";
 import { useAuth } from "../auth/useAuth";
-import { AppNavigation } from "../components/AppNavigation";
 
 import type { DepartmentDto } from "../types/departments";
 
@@ -179,8 +178,7 @@ export function DepartmentsPage() {
     }
 
     return (
-        <main>
-            <AppNavigation />
+        <div className="page admin-page">
 
             <h1>Departmanlar</h1>
 
@@ -315,7 +313,7 @@ export function DepartmentsPage() {
                     </tbody>
                 </table>
             )}
-        </main>
+        </div>
     );
 }
 

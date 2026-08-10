@@ -224,19 +224,21 @@ export function TicketActions({
     }
 
     return (
-        <section>
-            <h2>İşlemler</h2>
+        <section className="card action-card" aria-labelledby="actions-title">
+            <h2 id="actions-title">İşlemler</h2>
 
             {actionError && (
-                <p role="alert">{actionError}</p>
+                <p className="error-state" role="alert">{actionError}</p>
             )}
 
             {!hasAnyAction && (
-                <p>Bu ticket için kullanılabilir işlem bulunmuyor.</p>
+                <p className="empty-state">
+                    Bu ticket için kullanılabilir işlem bulunmuyor.
+                </p>
             )}
 
             {needsTechnicianList && (
-                <div>
+                <div className="action-group">
                     <label htmlFor="technician-select">
                         Teknik Personel
                     </label>
@@ -267,6 +269,7 @@ export function TicketActions({
                     {ticket.status === "Open" && (
                         <button
                             type="button"
+                            className="button button-primary"
                             disabled={
                                 activeAction !== null ||
                                 !selectedTechnicianId
@@ -288,6 +291,7 @@ export function TicketActions({
                     {ticket.status === "Assigned" && (
                         <button
                             type="button"
+                            className="button button-secondary"
                             disabled={
                                 activeAction !== null ||
                                 !selectedTechnicianId
@@ -309,7 +313,7 @@ export function TicketActions({
             )}
 
             {canChangePriority && (
-                <div>
+                <div className="action-group">
                     <label htmlFor="priority-select">Öncelik</label>
 
                     <select
@@ -335,6 +339,7 @@ export function TicketActions({
 
                     <button
                         type="button"
+                        className="button button-secondary"
                         disabled={
                             activeAction !== null ||
                             selectedPriority === priorityValues[ticket.priority]
@@ -356,6 +361,7 @@ export function TicketActions({
             {isAssignedTechnician && ticket.status === "Assigned" && (
                 <button
                     type="button"
+                    className="button button-primary"
                     disabled={activeAction !== null}
                     onClick={() => runTicketAction(
                         "start-progress",
@@ -368,7 +374,7 @@ export function TicketActions({
 
             {isAssignedTechnician && ticket.status === "InProgress" && (
                 <>
-                    <div>
+                    <div className="action-group">
                         <label htmlFor="waiting-reason">
                             Bekleme Nedeni
                         </label>
@@ -384,6 +390,7 @@ export function TicketActions({
 
                         <button
                             type="button"
+                            className="button button-secondary"
                             disabled={
                                 activeAction !== null ||
                                 !waitingReason.trim()
@@ -402,7 +409,7 @@ export function TicketActions({
                         </button>
                     </div>
 
-                    <div>
+                    <div className="action-group">
                         <label htmlFor="resolution-description">
                             Çözüm Açıklaması
                         </label>
@@ -418,6 +425,7 @@ export function TicketActions({
 
                         <button
                             type="button"
+                            className="button button-primary"
                             disabled={
                                 activeAction !== null ||
                                 !resolutionDescription.trim()
@@ -444,6 +452,7 @@ export function TicketActions({
             {isAssignedTechnician && ticket.status === "Waiting" && (
                 <button
                     type="button"
+                    className="button button-primary"
                     disabled={activeAction !== null}
                     onClick={() => runTicketAction(
                         "resume",
@@ -457,6 +466,7 @@ export function TicketActions({
             {canClose && (
                 <button
                     type="button"
+                    className="button button-primary"
                     disabled={activeAction !== null}
                     onClick={() => runTicketAction(
                         "close",
@@ -468,7 +478,7 @@ export function TicketActions({
             )}
 
             {canReopen && (
-                <div>
+                <div className="action-group">
                     <label htmlFor="reopen-reason">
                         Yeniden Açma Nedeni
                     </label>
@@ -484,6 +494,7 @@ export function TicketActions({
 
                     <button
                         type="button"
+                        className="button button-secondary"
                         disabled={
                             activeAction !== null ||
                             !reopenReason.trim()
@@ -506,6 +517,7 @@ export function TicketActions({
             {canCancel && (
                 <button
                     type="button"
+                    className="button button-danger"
                     disabled={activeAction !== null}
                     onClick={() => runTicketAction(
                         "cancel",
@@ -519,6 +531,7 @@ export function TicketActions({
             {canSoftDelete && (
                 <button
                     type="button"
+                    className="button button-danger"
                     disabled={activeAction !== null}
                     onClick={handleSoftDelete}
                 >
