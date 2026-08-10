@@ -15,6 +15,14 @@ export type TicketPriority =
 
 export type TicketPriorityValue = 1 | 2 | 3 | 4;
 
+export type TicketStatusValue = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type TicketSortBy =
+    | "createdAt"
+    | "title"
+    | "priority"
+    | "status";
+
 export interface TicketDto {
     id: string;
     title: string;
@@ -81,9 +89,9 @@ export interface CreateTicketRequest {
 export interface TicketListQuery {
     pageNumber?: number;
     pageSize?: number;
-    status?: number;
-    priority?: number;
+    status?: TicketStatusValue;
+    priority?: TicketPriorityValue;
     assetId?: string;
-    sortBy?: "createdAt" | "title" | "priority" | "status";
+    sortBy?: TicketSortBy;
     sortDescending?: boolean;
 }
