@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ApiError } from "../api/httpClient";
 import { getTickets } from "../api/ticketsApi";
 import { useAuth } from "../auth/useAuth";
+import { AppNavigation } from "../components/AppNavigation";
 
 import type { TicketDto } from "../types/tickets";
 import { Link } from "react-router-dom";
@@ -62,13 +63,7 @@ export function TicketsPage() {
 
     return (
         <main>
-            <nav>
-                <Link to="/tickets">Ticketlar</Link>
-                {" | "}
-                <Link to="/assets">Cihazlar</Link>
-                {" | "}
-                <Link to="/departments">Departmanlar</Link>
-            </nav>
+            <AppNavigation />
 
             <h1>Ticketlar</h1>
 

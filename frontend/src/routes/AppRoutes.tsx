@@ -1,11 +1,16 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
+import { RoleRoute } from "../auth/RoleRoute";
+import { AuditLogsPage } from "../pages/AuditLogsPage";
 import { AssetsPage } from "../pages/AssetsPage";
 import { DepartmentsPage } from "../pages/DepartmentsPage";
 import { LoginPage } from "../pages/LoginPage";
 import { CreateTicketPage } from "../pages/CreateTicketPage";
 import { TicketsPage } from "../pages/TicketsPage";
 import { TicketDetailsPage } from "../pages/TicketDetailsPage";
+import { UsersPage } from "../pages/UsersPage";
+
+const adminRoles = ["Admin"] as const;
 
 export function AppRoutes() {
     return (
@@ -35,6 +40,24 @@ export function AppRoutes() {
                     <ProtectedRoute>
                         <DepartmentsPage />
                     </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/users"
+                element={
+                    <RoleRoute allowedRoles={[...adminRoles]}>
+                        <UsersPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/audit-logs"
+                element={
+                    <RoleRoute allowedRoles={[...adminRoles]}>
+                        <AuditLogsPage />
+                    </RoleRoute>
                 }
             />
 

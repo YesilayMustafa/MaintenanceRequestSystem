@@ -3,7 +3,6 @@ import {
     useState,
     type SubmitEvent,
 } from "react";
-import { Link } from "react-router-dom";
 
 import {
     changeDepartmentStatus,
@@ -13,6 +12,7 @@ import {
 } from "../api/departmentsApi";
 import { ApiError } from "../api/httpClient";
 import { useAuth } from "../auth/useAuth";
+import { AppNavigation } from "../components/AppNavigation";
 
 import type { DepartmentDto } from "../types/departments";
 
@@ -180,13 +180,7 @@ export function DepartmentsPage() {
 
     return (
         <main>
-            <nav>
-                <Link to="/tickets">Ticketlar</Link>
-                {" | "}
-                <Link to="/assets">Cihazlar</Link>
-                {" | "}
-                <Link to="/departments">Departmanlar</Link>
-            </nav>
+            <AppNavigation />
 
             <h1>Departmanlar</h1>
 
