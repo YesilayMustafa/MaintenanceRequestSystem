@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
+import { AssetsPage } from "../pages/AssetsPage";
+import { DepartmentsPage } from "../pages/DepartmentsPage";
 import { LoginPage } from "../pages/LoginPage";
 import { CreateTicketPage } from "../pages/CreateTicketPage";
 import { TicketsPage } from "../pages/TicketsPage";
@@ -16,6 +18,24 @@ export function AppRoutes() {
             <Route
                 path="/login"
                 element={<LoginPage />}
+            />
+
+            <Route
+                path="/assets"
+                element={
+                    <ProtectedRoute>
+                        <AssetsPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/departments"
+                element={
+                    <ProtectedRoute>
+                        <DepartmentsPage />
+                    </ProtectedRoute>
+                }
             />
 
             <Route

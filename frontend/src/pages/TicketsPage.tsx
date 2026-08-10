@@ -62,6 +62,14 @@ export function TicketsPage() {
 
     return (
         <main>
+            <nav>
+                <Link to="/tickets">Ticketlar</Link>
+                {" | "}
+                <Link to="/assets">Cihazlar</Link>
+                {" | "}
+                <Link to="/departments">Departmanlar</Link>
+            </nav>
+
             <h1>Ticketlar</h1>
 
             <p>
