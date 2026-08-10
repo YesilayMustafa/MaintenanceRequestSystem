@@ -14,6 +14,10 @@ import {
     updateUser,
 } from "../api/usersApi";
 import { useAuth } from "../auth/useAuth";
+import {
+    ActiveStatusBadge,
+    UserRoleBadge,
+} from "../components/ManagementBadges";
 
 import type { UserRole } from "../types/auth";
 import type { DepartmentDto } from "../types/departments";
@@ -263,32 +267,53 @@ export function UsersPage() {
     }
 
     return (
-        <div className="page admin-page">
-
-            <h1>Kullanıcılar</h1>
+        <div className="page">
+            <header className="page-header">
+                <div>
+                    <h1 className="page-title">Kullanıcılar</h1>
+                    <p className="page-description">
+                        Sistem kullanıcılarını, departmanlarını, rollerini ve
+                        erişim durumlarını yönetin.
+                    </p>
+                </div>
 
             {!isFormVisible && (
-                <button type="button" onClick={startCreate}>
+                    <button
+                        type="button"
+                        className="button button-primary"
+                        onClick={startCreate}
+                    >
                     Yeni Kullanıcı
                 </button>
             )}
+            </header>
 
             {isFormVisible && (
-                <section>
-                    <h2>
-                        {editingUser
-                            ? "Kullanıcı Düzenle"
-                            : "Yeni Kullanıcı"}
-                    </h2>
+                <section className="card management-form-card">
+                    <div className="card-header">
+                        <div>
+                            <h2>
+                                {editingUser
+                                    ? "Kullanıcıyı Düzenle"
+                                    : "Yeni Kullanıcı"}
+                            </h2>
+                            <p className="page-description">
+                                {editingUser
+                                    ? "Kullanıcının temel bilgilerini ve departmanını güncelleyin."
+                                    : "Yeni kullanıcı hesabını rolü ve departmanıyla oluşturun."}
+                            </p>
+                        </div>
+                    </div>
 
                     {activeDepartments.length === 0 && (
-                        <p role="alert">
+                        <p className="error-state" role="alert">
                             Kullanıcı kaydetmek için aktif departman bulunamadı.
                         </p>
                     )}
 
                     <form onSubmit={handleSubmit}>
-                        <div>
+                        <div className="form-grid">
+                        <div className="form-group">
                             <label htmlFor="user-full-name">Ad Soyad</label>
                             <input
                                 id="user-full-name"
@@ -301,7 +326,7 @@ export function UsersPage() {
                             />
                         </div>
 
-                        <div>
+                        <div className="form-group">
                             <label htmlFor="user-email">E-posta</label>
                             <input
                                 id="user-email"
@@ -316,7 +341,7 @@ export function UsersPage() {
                         </div>
 
                         {!editingUser && (
-                            <div>
+                            <div className="form-group">
                                 <label htmlFor="user-password">Parola</label>
                                 <input
                                     id="user-password"
@@ -334,7 +359,7 @@ export function UsersPage() {
                         )}
 
                         {!editingUser && (
-                            <div>
+                            <div className="form-group">
                                 <label htmlFor="user-role">Rol</label>
                                 <select
                                     id="user-role"
@@ -359,7 +384,7 @@ export function UsersPage() {
                             </div>
                         )}
 
-                        <div>
+                        <div className="form-group">
                             <label htmlFor="user-department">Departman</label>
                             <select
                                 id="user-department"
@@ -384,36 +409,49 @@ export function UsersPage() {
                             </select>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={
-                                isSubmitting ||
-                                activeDepartments.length === 0
-                            }
-                        >
-                            {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
-                        </button>
+                        </div>
 
-                        <button
-                            type="button"
-                            onClick={closeForm}
-                            disabled={isSubmitting}
-                        >
-                            Vazgeç
-                        </button>
+                        <div className="form-actions">
+                            <button
+                                type="submit"
+                                className="button button-primary"
+                                disabled={
+                                    isSubmitting ||
+                                    activeDepartments.length === 0
+                                }
+                            >
+                                {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
+                            </button>
+
+                            <button
+                                type="button"
+                                className="button button-secondary"
+                                onClick={closeForm}
+                                disabled={isSubmitting}
+                            >
+                                Vazgeç
+                            </button>
+                        </div>
                     </form>
                 </section>
             )}
 
-            {actionError && <p role="alert">{actionError}</p>}
-            {isLoading && <p>Kullanıcılar yükleniyor...</p>}
-            {pageError && <p role="alert">{pageError}</p>}
+            {actionError && (
+                <p className="error-state" role="alert">{actionError}</p>
+            )}
+            {isLoading && (
+                <p className="loading-state">Kullanıcılar yükleniyor...</p>
+            )}
+            {pageError && (
+                <p className="error-state" role="alert">{pageError}</p>
+            )}
 
             {!isLoading && !pageError && users.length === 0 && (
-                <p>Kullanıcı bulunamadı.</p>
+                <p className="empty-state">Kullanıcı bulunamadı.</p>
             )}
 
             {!isLoading && !pageError && users.length > 0 && (
+                <div className="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -433,8 +471,11 @@ export function UsersPage() {
                                 <td>{user.fullName}</td>
                                 <td>{user.email}</td>
                                 <td>
+                                    <div className="role-control">
+                                    <UserRoleBadge role={user.role} />
                                     <select
                                         aria-label={`${user.fullName} rolü`}
+                                        className="compact-select"
                                         value={roleValues[user.role]}
                                         onChange={(event) =>
                                             handleRoleChange(
@@ -454,16 +495,21 @@ export function UsersPage() {
                                             </option>
                                         ))}
                                     </select>
+                                    </div>
                                 </td>
                                 <td>{user.departmentName}</td>
-                                <td>{user.isActive ? "Aktif" : "Pasif"}</td>
+                                <td>
+                                    <ActiveStatusBadge isActive={user.isActive} />
+                                </td>
                                 <td>
                                     {new Date(user.createdAt)
                                         .toLocaleString("tr-TR")}
                                 </td>
                                 <td>
+                                    <div className="action-buttons">
                                     <button
                                         type="button"
+                                        className="button button-secondary button-small"
                                         onClick={() => startEdit(user)}
                                         disabled={activeActionUserId !== null}
                                     >
@@ -472,6 +518,7 @@ export function UsersPage() {
 
                                     <button
                                         type="button"
+                                        className="button button-secondary button-small"
                                         onClick={() => handleStatusChange(user)}
                                         disabled={activeActionUserId !== null}
                                     >
@@ -481,11 +528,13 @@ export function UsersPage() {
                                                 ? "Pasif Yap"
                                                 : "Aktif Yap"}
                                     </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+                </div>
             )}
         </div>
     );

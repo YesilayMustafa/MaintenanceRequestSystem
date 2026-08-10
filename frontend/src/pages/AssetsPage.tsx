@@ -13,6 +13,7 @@ import {
 import { getDepartments } from "../api/departmentsApi";
 import { ApiError } from "../api/httpClient";
 import { useAuth } from "../auth/useAuth";
+import { ActiveStatusBadge } from "../components/ManagementBadges";
 
 import type {
     AssetDto,
@@ -45,6 +46,15 @@ const assetTypeValues: Record<AssetTypeName, AssetTypeValue> = {
     NetworkDevice: 4,
     SoftwareSystem: 5,
     Other: 6,
+};
+
+const assetTypeLabels: Record<AssetTypeName, string> = {
+    Computer: "Bilgisayar",
+    Printer: "Yazıcı",
+    Server: "Sunucu",
+    NetworkDevice: "Ağ Cihazı",
+    SoftwareSystem: "Yazılım Sistemi",
+    Other: "Diğer",
 };
 
 export function AssetsPage() {
@@ -254,30 +264,51 @@ export function AssetsPage() {
     }
 
     return (
-        <div className="page admin-page">
-
-            <h1>Cihazlar</h1>
+        <div className="page">
+            <header className="page-header">
+                <div>
+                    <h1 className="page-title">Cihazlar</h1>
+                    <p className="page-description">
+                        Bakım taleplerine bağlı donanım ve sistem envanterini
+                        görüntüleyin ve yönetin.
+                    </p>
+                </div>
 
             {user?.role === "Admin" && !isFormVisible && (
-                <button type="button" onClick={startCreate}>
+                    <button
+                        type="button"
+                        className="button button-primary"
+                        onClick={startCreate}
+                    >
                     Yeni Cihaz
                 </button>
             )}
+            </header>
 
             {user?.role === "Admin" && isFormVisible && (
-                <section>
-                    <h2>
-                        {editingAsset ? "Cihaz Düzenle" : "Yeni Cihaz"}
-                    </h2>
+                <section className="card management-form-card">
+                    <div className="card-header">
+                        <div>
+                            <h2>
+                                {editingAsset ? "Cihazı Düzenle" : "Yeni Cihaz"}
+                            </h2>
+                            <p className="page-description">
+                                {editingAsset
+                                    ? "Cihazın temel envanter bilgilerini güncelleyin."
+                                    : "Envantere yeni bir cihaz veya sistem ekleyin."}
+                            </p>
+                        </div>
+                    </div>
 
                     {activeDepartments.length === 0 && (
-                        <p role="alert">
+                        <p className="error-state" role="alert">
                             Cihaz kaydetmek için aktif departman bulunamadı.
                         </p>
                     )}
 
                     <form onSubmit={handleSubmit}>
-                        <div>
+                        <div className="form-grid">
+                        <div className="form-group">
                             <label htmlFor="asset-name">Ad</label>
                             <input
                                 id="asset-name"
@@ -290,7 +321,7 @@ export function AssetsPage() {
                             />
                         </div>
 
-                        <div>
+                        <div className="form-group">
                             <label htmlFor="asset-serial-number">
                                 Seri Numarası
                             </label>
@@ -305,7 +336,7 @@ export function AssetsPage() {
                             />
                         </div>
 
-                        <div>
+                        <div className="form-group">
                             <label htmlFor="asset-type">Tür</label>
                             <select
                                 id="asset-type"
@@ -329,7 +360,7 @@ export function AssetsPage() {
                             </select>
                         </div>
 
-                        <div>
+                        <div className="form-group">
                             <label htmlFor="asset-department">
                                 Departman
                             </label>
@@ -356,7 +387,7 @@ export function AssetsPage() {
                             </select>
                         </div>
 
-                        <div>
+                        <div className="form-group form-group-full">
                             <label htmlFor="asset-location">Konum</label>
                             <input
                                 id="asset-location"
@@ -369,36 +400,49 @@ export function AssetsPage() {
                             />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={
-                                isSubmitting ||
-                                activeDepartments.length === 0
-                            }
-                        >
-                            {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
-                        </button>
+                        </div>
 
-                        <button
-                            type="button"
-                            onClick={closeForm}
-                            disabled={isSubmitting}
-                        >
-                            Vazgeç
-                        </button>
+                        <div className="form-actions">
+                            <button
+                                type="submit"
+                                className="button button-primary"
+                                disabled={
+                                    isSubmitting ||
+                                    activeDepartments.length === 0
+                                }
+                            >
+                                {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
+                            </button>
+
+                            <button
+                                type="button"
+                                className="button button-secondary"
+                                onClick={closeForm}
+                                disabled={isSubmitting}
+                            >
+                                Vazgeç
+                            </button>
+                        </div>
                     </form>
                 </section>
             )}
 
-            {actionError && <p role="alert">{actionError}</p>}
-            {isLoading && <p>Cihazlar yükleniyor...</p>}
-            {pageError && <p role="alert">{pageError}</p>}
+            {actionError && (
+                <p className="error-state" role="alert">{actionError}</p>
+            )}
+            {isLoading && (
+                <p className="loading-state">Cihazlar yükleniyor...</p>
+            )}
+            {pageError && (
+                <p className="error-state" role="alert">{pageError}</p>
+            )}
 
             {!isLoading && !pageError && assets.length === 0 && (
-                <p>Cihaz bulunamadı.</p>
+                <p className="empty-state">Cihaz bulunamadı.</p>
             )}
 
             {!isLoading && !pageError && assets.length > 0 && (
+                <div className="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -417,15 +461,23 @@ export function AssetsPage() {
                             <tr key={asset.id}>
                                 <td>{asset.name}</td>
                                 <td>{asset.serialNumber}</td>
-                                <td>{asset.type}</td>
+                                <td>{assetTypeLabels[asset.type]}</td>
                                 <td>{asset.departmentName}</td>
-                                <td>{asset.location ?? "-"}</td>
-                                <td>{asset.isActive ? "Aktif" : "Pasif"}</td>
+                                <td>
+                                    {asset.location ?? (
+                                        <span className="muted-text">Belirtilmedi</span>
+                                    )}
+                                </td>
+                                <td>
+                                    <ActiveStatusBadge isActive={asset.isActive} />
+                                </td>
 
                                 {user?.role === "Admin" && (
                                     <td>
+                                        <div className="action-buttons">
                                         <button
                                             type="button"
+                                            className="button button-secondary button-small"
                                             onClick={() => startEdit(asset)}
                                             disabled={
                                                 isSubmitting ||
@@ -437,6 +489,7 @@ export function AssetsPage() {
 
                                         <button
                                             type="button"
+                                            className="button button-secondary button-small"
                                             onClick={() =>
                                                 handleStatusChange(asset)
                                             }
@@ -451,12 +504,14 @@ export function AssetsPage() {
                                                     ? "Pasif Yap"
                                                     : "Aktif Yap"}
                                         </button>
+                                        </div>
                                     </td>
                                 )}
                             </tr>
                         ))}
                     </tbody>
                 </table>
+                </div>
             )}
         </div>
     );

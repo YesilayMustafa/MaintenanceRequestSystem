@@ -149,12 +149,30 @@ export function AuditLogsPage() {
     }
 
     return (
-        <div className="page admin-page">
-
-            <h1>Audit Logları</h1>
-
-            <form onSubmit={handleFilterSubmit}>
+        <div className="page">
+            <header className="page-header">
                 <div>
+                    <h1 className="page-title">Audit Logları</h1>
+                    <p className="page-description">
+                        Sistemdeki önemli işlemleri ve veri değişikliklerini
+                        zaman, kullanıcı ve entity bilgileriyle izleyin.
+                    </p>
+                </div>
+            </header>
+
+            <section className="card" aria-labelledby="audit-filters-title">
+                <div className="card-header">
+                    <div>
+                        <h2 id="audit-filters-title">Filtreler</h2>
+                        <p className="page-description">
+                            Audit kayıtlarını desteklenen alanlara göre daraltın.
+                        </p>
+                    </div>
+                </div>
+
+                <form onSubmit={handleFilterSubmit}>
+                    <div className="audit-toolbar-grid">
+                <div className="form-group">
                     <label htmlFor="audit-action">Action</label>
                     <input
                         id="audit-action"
@@ -168,7 +186,7 @@ export function AuditLogsPage() {
                     />
                 </div>
 
-                <div>
+                <div className="form-group">
                     <label htmlFor="audit-entity-name">Entity</label>
                     <input
                         id="audit-entity-name"
@@ -182,7 +200,7 @@ export function AuditLogsPage() {
                     />
                 </div>
 
-                <div>
+                <div className="form-group">
                     <label htmlFor="audit-user">Kullanıcı</label>
                     <select
                         id="audit-user"
@@ -203,7 +221,7 @@ export function AuditLogsPage() {
                     </select>
                 </div>
 
-                <div>
+                <div className="form-group">
                     <label htmlFor="audit-entity-id">Entity ID</label>
                     <input
                         id="audit-entity-id"
@@ -217,7 +235,7 @@ export function AuditLogsPage() {
                     />
                 </div>
 
-                <div>
+                <div className="form-group">
                     <label htmlFor="audit-start-date">Başlangıç</label>
                     <input
                         id="audit-start-date"
@@ -232,7 +250,7 @@ export function AuditLogsPage() {
                     />
                 </div>
 
-                <div>
+                <div className="form-group">
                     <label htmlFor="audit-end-date">Bitiş</label>
                     <input
                         id="audit-end-date"
@@ -247,19 +265,7 @@ export function AuditLogsPage() {
                     />
                 </div>
 
-                <button type="submit" disabled={isLoading}>
-                    Filtrele
-                </button>
-                <button
-                    type="button"
-                    onClick={clearFilters}
-                    disabled={isLoading}
-                >
-                    Temizle
-                </button>
-            </form>
-
-            <div>
+                <div className="form-group">
                 <label htmlFor="audit-page-size">Sayfa Boyutu</label>
                 <select
                     id="audit-page-size"
@@ -274,17 +280,42 @@ export function AuditLogsPage() {
                     <option value={25}>25</option>
                     <option value={50}>50</option>
                 </select>
-            </div>
+                </div>
+                    </div>
 
-            {isLoading && <p>Audit logları yükleniyor...</p>}
-            {pageError && <p role="alert">{pageError}</p>}
+                    <div className="form-actions">
+                        <button
+                            type="submit"
+                            className="button button-primary"
+                            disabled={isLoading}
+                        >
+                            Filtrele
+                        </button>
+                        <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={clearFilters}
+                            disabled={isLoading}
+                        >
+                            Temizle
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            {isLoading && (
+                <p className="loading-state">Audit logları yükleniyor...</p>
+            )}
+            {pageError && (
+                <p className="error-state" role="alert">{pageError}</p>
+            )}
 
             {!isLoading && !pageError && result.items.length === 0 && (
-                <p>Audit kaydı bulunamadı.</p>
+                <p className="empty-state">Audit kaydı bulunamadı.</p>
             )}
 
             {!isLoading && !pageError && result.items.length > 0 && (
-                <>
+                <div className="table-container audit-table-container">
                     <table>
                         <thead>
                             <tr>
@@ -310,11 +341,13 @@ export function AuditLogsPage() {
                                     </td>
                                     <td>{auditLog.action}</td>
                                     <td>{auditLog.entityName}</td>
-                                    <td>{auditLog.entityId}</td>
-                                    <td>
+                                    <td className="identifier-cell">
+                                        {auditLog.entityId}
+                                    </td>
+                                    <td className="audit-json-cell">
                                         <pre>{auditLog.oldValues ?? "-"}</pre>
                                     </td>
-                                    <td>
+                                    <td className="audit-json-cell">
                                         <pre>{auditLog.newValues ?? "-"}</pre>
                                     </td>
                                 </tr>
@@ -322,35 +355,40 @@ export function AuditLogsPage() {
                         </tbody>
                     </table>
 
-                    <p>
-                        Sayfa {result.pageNumber} / {result.totalPages} —
-                        Toplam {result.totalCount} kayıt
-                    </p>
+                    <div className="pagination">
+                        <p className="pagination-summary">
+                            Sayfa {result.pageNumber} / {result.totalPages} —
+                            Toplam {result.totalCount} kayıt
+                        </p>
+                        <div className="pagination-actions">
+                            <button
+                                type="button"
+                                className="button button-secondary button-small"
+                                onClick={() => setPageNumber(
+                                    (currentPage) => currentPage - 1
+                                )}
+                                disabled={isLoading || pageNumber <= 1}
+                            >
+                                Önceki Sayfa
+                            </button>
 
-                    <button
-                        type="button"
-                        onClick={() => setPageNumber(
-                            (currentPage) => currentPage - 1
-                        )}
-                        disabled={isLoading || pageNumber <= 1}
-                    >
-                        Önceki Sayfa
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => setPageNumber(
-                            (currentPage) => currentPage + 1
-                        )}
-                        disabled={
-                            isLoading ||
-                            result.totalPages === 0 ||
-                            pageNumber >= result.totalPages
-                        }
-                    >
-                        Sonraki Sayfa
-                    </button>
-                </>
+                            <button
+                                type="button"
+                                className="button button-secondary button-small"
+                                onClick={() => setPageNumber(
+                                    (currentPage) => currentPage + 1
+                                )}
+                                disabled={
+                                    isLoading ||
+                                    result.totalPages === 0 ||
+                                    pageNumber >= result.totalPages
+                                }
+                            >
+                                Sonraki Sayfa
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -12,6 +12,7 @@ import {
 } from "../api/departmentsApi";
 import { ApiError } from "../api/httpClient";
 import { useAuth } from "../auth/useAuth";
+import { ActiveStatusBadge } from "../components/ManagementBadges";
 
 import type { DepartmentDto } from "../types/departments";
 
@@ -178,26 +179,47 @@ export function DepartmentsPage() {
     }
 
     return (
-        <div className="page admin-page">
-
-            <h1>Departmanlar</h1>
+        <div className="page">
+            <header className="page-header">
+                <div>
+                    <h1 className="page-title">Departmanlar</h1>
+                    <p className="page-description">
+                        Kullanıcıları ve cihazları organizasyon birimlerine göre
+                        düzenleyin.
+                    </p>
+                </div>
 
             {user?.role === "Admin" && !isFormVisible && (
-                <button type="button" onClick={startCreate}>
+                    <button
+                        type="button"
+                        className="button button-primary"
+                        onClick={startCreate}
+                    >
                     Yeni Departman
                 </button>
             )}
+            </header>
 
             {user?.role === "Admin" && isFormVisible && (
-                <section>
-                    <h2>
-                        {editingDepartment
-                            ? "Departman Düzenle"
-                            : "Yeni Departman"}
-                    </h2>
+                <section className="card management-form-card">
+                    <div className="card-header">
+                        <div>
+                            <h2>
+                                {editingDepartment
+                                    ? "Departmanı Düzenle"
+                                    : "Yeni Departman"}
+                            </h2>
+                            <p className="page-description">
+                                {editingDepartment
+                                    ? "Departman adını ve açıklamasını güncelleyin."
+                                    : "Organizasyona yeni bir departman ekleyin."}
+                            </p>
+                        </div>
+                    </div>
 
                     <form onSubmit={handleSubmit}>
-                        <div>
+                        <div className="form-grid">
+                        <div className="form-group">
                             <label htmlFor="department-name">Ad</label>
 
                             <input
@@ -210,7 +232,7 @@ export function DepartmentsPage() {
                             />
                         </div>
 
-                        <div>
+                        <div className="form-group form-group-full">
                             <label htmlFor="department-description">
                                 Açıklama
                             </label>
@@ -225,39 +247,50 @@ export function DepartmentsPage() {
                             />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting
-                                ? "Kaydediliyor..."
-                                : "Kaydet"}
-                        </button>
+                        </div>
 
-                        <button
-                            type="button"
-                            onClick={closeForm}
-                            disabled={isSubmitting}
-                        >
-                            Vazgeç
-                        </button>
+                        <div className="form-actions">
+                            <button
+                                type="submit"
+                                className="button button-primary"
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting
+                                    ? "Kaydediliyor..."
+                                    : "Kaydet"}
+                            </button>
+
+                            <button
+                                type="button"
+                                className="button button-secondary"
+                                onClick={closeForm}
+                                disabled={isSubmitting}
+                            >
+                                Vazgeç
+                            </button>
+                        </div>
                     </form>
                 </section>
             )}
 
             {actionError && (
-                <p role="alert">{actionError}</p>
+                <p className="error-state" role="alert">{actionError}</p>
             )}
 
-            {isLoading && <p>Departmanlar yükleniyor...</p>}
+            {isLoading && (
+                <p className="loading-state">Departmanlar yükleniyor...</p>
+            )}
 
-            {pageError && <p role="alert">{pageError}</p>}
+            {pageError && (
+                <p className="error-state" role="alert">{pageError}</p>
+            )}
 
             {!isLoading && !pageError && departments.length === 0 && (
-                <p>Departman bulunamadı.</p>
+                <p className="empty-state">Departman bulunamadı.</p>
             )}
 
             {!isLoading && !pageError && departments.length > 0 && (
+                <div className="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -272,15 +305,25 @@ export function DepartmentsPage() {
                         {departments.map((department) => (
                             <tr key={department.id}>
                                 <td>{department.name}</td>
-                                <td>{department.description ?? "-"}</td>
                                 <td>
-                                    {department.isActive ? "Aktif" : "Pasif"}
+                                    {department.description ?? (
+                                        <span className="muted-text">
+                                            Açıklama yok
+                                        </span>
+                                    )}
+                                </td>
+                                <td>
+                                    <ActiveStatusBadge
+                                        isActive={department.isActive}
+                                    />
                                 </td>
 
                                 {user?.role === "Admin" && (
                                     <td>
+                                        <div className="action-buttons">
                                         <button
                                             type="button"
+                                            className="button button-secondary button-small"
                                             onClick={() => startEdit(department)}
                                             disabled={
                                                 isSubmitting ||
@@ -292,6 +335,7 @@ export function DepartmentsPage() {
 
                                         <button
                                             type="button"
+                                            className="button button-secondary button-small"
                                             onClick={() =>
                                                 handleStatusChange(department)
                                             }
@@ -306,12 +350,14 @@ export function DepartmentsPage() {
                                                     ? "Pasif Yap"
                                                     : "Aktif Yap"}
                                         </button>
+                                        </div>
                                     </td>
                                 )}
                             </tr>
                         ))}
                     </tbody>
                 </table>
+                </div>
             )}
         </div>
     );
