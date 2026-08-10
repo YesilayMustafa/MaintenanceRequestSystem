@@ -3,7 +3,10 @@ import {
     useState,
     type SubmitEvent,
 } from "react";
-import { useParams } from "react-router-dom";
+import {
+    useNavigate,
+    useParams,
+} from "react-router-dom";
 
 import {
     createTicketComment,
@@ -15,6 +18,7 @@ import {
     getTicketHistory,
 } from "../api/ticketsApi";
 import { useAuth } from "../auth/useAuth";
+import { TicketActions } from "../features/tickets/TicketActions";
 
 import type { TicketCommentDto } from "../types/comments";
 import type {
@@ -24,7 +28,8 @@ import type {
 
 export function TicketDetailsPage() {
     const { id } = useParams();
-    const { token } = useAuth();
+    const navigate = useNavigate();
+    const { user, token } = useAuth();
 
     const [ticket, setTicket] = useState<TicketDto | null>(null);
     const [history, setHistory] = useState<TicketHistoryDto[]>([]);
@@ -124,6 +129,21 @@ export function TicketDetailsPage() {
         }
     }
 
+    async function handleTicketUpdated(
+        updatedTicket: TicketDto
+    ) {
+        if (!token || !id) {
+            return;
+        }
+
+        setTicket(updatedTicket);
+
+        const updatedHistory =
+            await getTicketHistory(token, id);
+
+        setHistory(updatedHistory);
+    }
+
     if (isLoading) {
         return <p>Ticket yükleniyor...</p>;
     }
@@ -176,6 +196,16 @@ export function TicketDetailsPage() {
                     <strong>Çözüm Açıklaması:</strong>{" "}
                     {ticket.resolutionDescription}
                 </p>
+            )}
+
+            {user && token && (
+                <TicketActions
+                    ticket={ticket}
+                    user={user}
+                    token={token}
+                    onTicketUpdated={handleTicketUpdated}
+                    onSoftDeleted={() => navigate("/tickets")}
+                />
             )}
 
             <section>

@@ -13,6 +13,8 @@ export type TicketPriority =
     | "High"
     | "Critical";
 
+export type TicketPriorityValue = 1 | 2 | 3 | 4;
+
 export interface TicketDto {
     id: string;
     title: string;
@@ -47,6 +49,26 @@ export interface TicketHistoryDto {
     newStatus: string;
     description: string;
     occurredAt: string;
+}
+
+export interface AssignTicketRequest {
+    technicianId: string;
+}
+
+export interface PutTicketOnHoldRequest {
+    reason: string;
+}
+
+export interface ResolveTicketRequest {
+    resolutionDescription: string;
+}
+
+export interface ReopenTicketRequest {
+    reason: string;
+}
+
+export interface ChangeTicketPriorityRequest {
+    priority: TicketPriorityValue;
 }
 
 export interface TicketListQuery {

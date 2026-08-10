@@ -2,9 +2,14 @@ import { apiRequest } from "./httpClient";
 
 import type { PagedResult } from "../types/pagination";
 import type {
+    AssignTicketRequest,
+    ChangeTicketPriorityRequest,
+    PutTicketOnHoldRequest,
+    ReopenTicketRequest,
+    ResolveTicketRequest,
     TicketDto,
-    TicketListQuery,
     TicketHistoryDto,
+    TicketListQuery,
 } from "../types/tickets";
 
 export function getTickets(
@@ -77,6 +82,113 @@ export function getTicketHistory(
         {
             method: "GET",
             token,
+        }
+    );
+}
+
+export function assignTicket(
+    token: string,
+    id: string,
+    request: AssignTicketRequest
+): Promise<TicketDto> {
+    return patchTicket(token, id, "assignment", request);
+}
+
+export function reassignTicket(
+    token: string,
+    id: string,
+    request: AssignTicketRequest
+): Promise<TicketDto> {
+    return patchTicket(token, id, "reassignment", request);
+}
+
+export function startProgress(
+    token: string,
+    id: string
+): Promise<TicketDto> {
+    return patchTicket(token, id, "start-progress");
+}
+
+export function putOnHold(
+    token: string,
+    id: string,
+    request: PutTicketOnHoldRequest
+): Promise<TicketDto> {
+    return patchTicket(token, id, "put-on-hold", request);
+}
+
+export function resumeTicket(
+    token: string,
+    id: string
+): Promise<TicketDto> {
+    return patchTicket(token, id, "resume");
+}
+
+export function resolveTicket(
+    token: string,
+    id: string,
+    request: ResolveTicketRequest
+): Promise<TicketDto> {
+    return patchTicket(token, id, "resolve", request);
+}
+
+export function closeTicket(
+    token: string,
+    id: string
+): Promise<TicketDto> {
+    return patchTicket(token, id, "close");
+}
+
+export function reopenTicket(
+    token: string,
+    id: string,
+    request: ReopenTicketRequest
+): Promise<TicketDto> {
+    return patchTicket(token, id, "reopen", request);
+}
+
+export function cancelTicket(
+    token: string,
+    id: string
+): Promise<TicketDto> {
+    return patchTicket(token, id, "cancel");
+}
+
+export function changeTicketPriority(
+    token: string,
+    id: string,
+    request: ChangeTicketPriorityRequest
+): Promise<TicketDto> {
+    return patchTicket(token, id, "priority", request);
+}
+
+export function softDeleteTicket(
+    token: string,
+    id: string
+): Promise<void> {
+    return apiRequest<void>(
+        `/api/tickets/${id}`,
+        {
+            method: "DELETE",
+            token,
+        }
+    );
+}
+
+function patchTicket(
+    token: string,
+    id: string,
+    action: string,
+    request?: object
+): Promise<TicketDto> {
+    return apiRequest<TicketDto>(
+        `/api/tickets/${id}/${action}`,
+        {
+            method: "PATCH",
+            token,
+            body: request
+                ? JSON.stringify(request)
+                : undefined,
         }
     );
 }
