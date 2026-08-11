@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,6 +20,14 @@ public sealed class TicketConfiguration
 
         builder.Property(ticket => ticket.Id)
             .HasColumnName("id");
+
+        builder.Property(ticket => ticket.TicketNumber)
+            .HasColumnName("ticket_number")
+            .HasMaxLength(TicketNumberValue.MaxLength)
+            .IsRequired();
+
+        builder.HasIndex(ticket => ticket.TicketNumber)
+            .IsUnique();
 
         builder.Property(ticket => ticket.Title)
             .HasColumnName("title")

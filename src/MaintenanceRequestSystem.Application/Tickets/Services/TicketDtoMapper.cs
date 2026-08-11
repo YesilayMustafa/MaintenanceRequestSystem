@@ -23,6 +23,7 @@ internal static class TicketDtoMapper
 
         return new TicketDto(
             ticket.Id,
+            ticket.TicketNumber,
             ticket.Title,
             ticket.Description,
             ticket.Priority.ToString(),

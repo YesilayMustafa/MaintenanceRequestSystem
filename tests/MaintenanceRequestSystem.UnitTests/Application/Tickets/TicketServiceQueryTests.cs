@@ -27,7 +27,8 @@ public sealed partial class TicketServiceTests
                 new FakeUserRepository
                 {
                     UserById = user
-                });
+                },
+                new FakeTicketNumberGenerator());
 
         var request =
             new CreateTicketRequest
@@ -80,6 +81,7 @@ public sealed partial class TicketServiceTests
 
         Assert.Equal("Open", result.Status);
         Assert.Equal("High", result.Priority);
+        Assert.Equal("REQ-2026-000001", result.TicketNumber);
     }
 
     [Fact]
@@ -143,13 +145,35 @@ new TicketQueryService(
     }
 
     [Fact]
+    public async Task GetPagedAsync_WithBlankTicketNumber_ThrowsValidationException()
+    {
+        var service =
+            new TicketQueryService(
+                new FakeTicketRepository(),
+                new FakeUserRepository());
+
+        var query =
+            new TicketListQuery
+            {
+                TicketNumber = "   "
+            };
+
+        await Assert.ThrowsAsync<RequestValidationException>(
+            () => service.GetPagedAsync(
+                Guid.NewGuid(),
+                UserRole.Admin,
+                query));
+    }
+
+    [Fact]
     public async Task CreateAsync_WithEmptyAssetId_ThrowsValidationException()
     {
         var service =
 new TicketCreationService(
                 new FakeTicketRepository(),
                 new FakeAssetRepository(),
-                new FakeUserRepository());
+                new FakeUserRepository(),
+                new FakeTicketNumberGenerator());
 
         var request =
             new CreateTicketRequest
@@ -179,7 +203,8 @@ new TicketCreationService(
                 new FakeUserRepository
                 {
                     UserById = null
-                });
+                },
+                new FakeTicketNumberGenerator());
 
         var request =
             CreateRequest(
@@ -210,7 +235,8 @@ new TicketCreationService(
                 new FakeUserRepository
                 {
                     UserById = user
-                });
+                },
+                new FakeTicketNumberGenerator());
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.CreateAsync(
@@ -242,7 +268,8 @@ new TicketCreationService(
                 new FakeUserRepository
                 {
                     UserById = user
-                });
+                },
+                new FakeTicketNumberGenerator());
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.CreateAsync(
@@ -277,7 +304,8 @@ new TicketCreationService(
                 new FakeUserRepository
                 {
                     UserById = user
-                });
+                },
+                new FakeTicketNumberGenerator());
 
         await Assert.ThrowsAsync<RequestValidationException>(
             () => service.CreateAsync(
@@ -317,6 +345,7 @@ new TicketQueryService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Bilgisayar açılmıyor",
@@ -346,6 +375,7 @@ new TicketQueryService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Bilgisayar açılmıyor",

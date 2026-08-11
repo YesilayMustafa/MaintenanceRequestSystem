@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace MaintenanceRequestSystem.Infrastructure.Persistence;
@@ -32,6 +33,9 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
+
+    public DbSet<TicketNumberSequence> TicketNumberSequences
+        => Set<TicketNumberSequence>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

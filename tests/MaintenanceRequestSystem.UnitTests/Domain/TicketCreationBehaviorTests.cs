@@ -1,5 +1,6 @@
 ﻿using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Domain.ValueObjects;
 
 namespace MaintenanceRequestSystem.UnitTests.Domain;
 
@@ -12,6 +13,7 @@ public sealed partial class TicketBehaviorTests
         var createdByUserId = Guid.NewGuid();
 
         var ticket = new Ticket(
+            "REQ-2000-999999",
             assetId,
             createdByUserId,
             "  Bilgisayar açılmıyor  ",
@@ -42,6 +44,7 @@ public sealed partial class TicketBehaviorTests
     {
         Assert.Throws<ArgumentException>(
             () => new Ticket(
+                "REQ-2000-999999",
                 Guid.Empty,
                 Guid.NewGuid(),
                 "Test talebi",
@@ -54,6 +57,7 @@ public sealed partial class TicketBehaviorTests
     {
         Assert.Throws<ArgumentException>(
             () => new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 Guid.Empty,
                 "Test talebi",
@@ -66,6 +70,7 @@ public sealed partial class TicketBehaviorTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 "Test talebi",
@@ -83,6 +88,7 @@ public sealed partial class TicketBehaviorTests
 
         Assert.Throws<ArgumentException>(
             () => new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 title,
@@ -100,10 +106,64 @@ public sealed partial class TicketBehaviorTests
 
         Assert.Throws<ArgumentException>(
             () => new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 "Test talebi",
                 description,
                 TicketPriority.Low));
+    }
+
+    [Fact]
+    public void Constructor_WithValidTicketNumber_SetsImmutableTicketNumber()
+    {
+        var ticket = new Ticket(
+            "  req-2026-000001  ",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Test talebi",
+            "Test açıklaması",
+            TicketPriority.Medium);
+
+        Assert.Equal("REQ-2026-000001", ticket.TicketNumber);
+        Assert.True(
+            typeof(Ticket)
+                .GetProperty(nameof(Ticket.TicketNumber))!
+                .SetMethod!
+                .IsPrivate);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyTicketNumber_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(
+            () => new Ticket(
+                string.Empty,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "Test talebi",
+                "Test açıklaması",
+                TicketPriority.Medium));
+    }
+
+    [Theory]
+    [InlineData(2026, 1, "REQ-2026-000001")]
+    [InlineData(2027, 42, "REQ-2027-000042")]
+    public void TicketNumberValue_Create_FormatsYearAndSequence(
+        int year,
+        long sequence,
+        string expected)
+    {
+        Assert.Equal(
+            expected,
+            TicketNumberValue.Create(year, sequence));
+    }
+
+    [Fact]
+    public void CreateTicketRequest_DoesNotExposeTicketNumber()
+    {
+        Assert.Null(
+            typeof(MaintenanceRequestSystem.Application.Tickets.Dtos.CreateTicketRequest)
+                .GetProperty(nameof(Ticket.TicketNumber)));
     }
 }

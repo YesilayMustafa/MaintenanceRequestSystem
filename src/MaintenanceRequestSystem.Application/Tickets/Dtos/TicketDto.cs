@@ -2,6 +2,7 @@
 
 public sealed record TicketDto(
     Guid Id,
+    string TicketNumber,
     string Title,
     string Description,
     string Priority,

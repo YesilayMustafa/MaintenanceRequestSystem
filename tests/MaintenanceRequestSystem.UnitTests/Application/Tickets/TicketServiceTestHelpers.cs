@@ -255,6 +255,20 @@ public sealed partial class TicketServiceTests
         }
     }
 
+    private sealed class FakeTicketNumberGenerator
+        : ITicketNumberGenerator
+    {
+        public string TicketNumber { get; init; } =
+            "REQ-2026-000001";
+
+        public Task<string> NextAsync(
+            DateTime utcNow,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(TicketNumber);
+        }
+    }
+
     private static void SetTicketNavigationProperties(
     Ticket ticket,
     Asset asset,

@@ -14,6 +14,8 @@ public sealed class TicketListQuery
 
     public Guid? AssetId { get; init; }
 
+    public string? TicketNumber { get; init; }
+
     public string SortBy { get; init; } = "createdAt";
 
     public bool SortDescending { get; init; } = true;

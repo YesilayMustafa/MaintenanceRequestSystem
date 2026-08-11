@@ -12,15 +12,18 @@ public sealed class TicketCreationService : ITicketCreationService
     private readonly ITicketRepository _ticketRepository;
     private readonly IAssetRepository _assetRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ITicketNumberGenerator _ticketNumberGenerator;
 
     public TicketCreationService(
         ITicketRepository ticketRepository,
         IAssetRepository assetRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        ITicketNumberGenerator ticketNumberGenerator)
     {
         _ticketRepository = ticketRepository;
         _assetRepository = assetRepository;
         _userRepository = userRepository;
+        _ticketNumberGenerator = ticketNumberGenerator;
     }
 
     /// <summary>
@@ -75,7 +78,13 @@ public sealed class TicketCreationService : ITicketCreationService
                 "Pasif bir cihaz için yeni talep oluşturulamaz.");
         }
 
+        var ticketNumber =
+            await _ticketNumberGenerator.NextAsync(
+                DateTime.UtcNow,
+                cancellationToken);
+
         var ticket = new Ticket(
+            ticketNumber,
             request.AssetId,
             createdByUserId,
             request.Title,
