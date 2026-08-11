@@ -9,13 +9,14 @@ import { ApiError } from "../api/httpClient";
 import {
     changeUserRole,
     changeUserStatus,
-    createUser,
     getUsers,
+    inviteUser,
+    resendInvitation,
     updateUser,
 } from "../api/usersApi";
 import { useAuth } from "../auth/useAuth";
 import {
-    ActiveStatusBadge,
+    AccountStatusBadge,
     UserRoleBadge,
 } from "../components/ManagementBadges";
 
@@ -54,10 +55,10 @@ export function UsersPage() {
     const [editingUser, setEditingUser] = useState<UserDto | null>(null);
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
     const [role, setRole] = useState<UserRoleValue>(1);
     const [departmentId, setDepartmentId] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [activeActionUserId, setActiveActionUserId] =
         useState<string | null>(null);
 
@@ -120,7 +121,6 @@ export function UsersPage() {
         setEditingUser(null);
         setFullName("");
         setEmail("");
-        setPassword("");
         setRole(1);
         setDepartmentId("");
     }
@@ -135,7 +135,6 @@ export function UsersPage() {
         setEditingUser(user);
         setFullName(user.fullName);
         setEmail(user.email);
-        setPassword("");
         setRole(roleValues[user.role]);
         setDepartmentId(
             activeDepartments.some(
@@ -180,14 +179,10 @@ export function UsersPage() {
             return;
         }
 
-        if (!editingUser && password.length < 8) {
-            setActionError("Parola en az 8 karakter olmalıdır.");
-            return;
-        }
-
         try {
             setIsSubmitting(true);
             setActionError(null);
+            setSuccessMessage(null);
 
             if (editingUser) {
                 await updateUser(token, editingUser.id, {
@@ -196,10 +191,9 @@ export function UsersPage() {
                     departmentId,
                 });
             } else {
-                await createUser(token, {
+                await inviteUser(token, {
                     fullName: normalizedFullName,
                     email: normalizedEmail,
-                    password,
                     role,
                     departmentId,
                 });
@@ -207,6 +201,11 @@ export function UsersPage() {
 
             await refreshUsers();
             closeForm();
+            setSuccessMessage(
+                editingUser
+                    ? "Kullanıcı bilgileri güncellendi."
+                    : "Kullanıcı daveti gönderildi."
+            );
         } catch (error) {
             setActionError(getErrorMessage(
                 error,
@@ -214,6 +213,27 @@ export function UsersPage() {
             ));
         } finally {
             setIsSubmitting(false);
+        }
+    }
+
+    async function handleResendInvitation(user: UserDto) {
+        if (!token || activeActionUserId) {
+            return;
+        }
+
+        try {
+            setActiveActionUserId(user.id);
+            setActionError(null);
+            setSuccessMessage(null);
+            await resendInvitation(token, user.id);
+            setSuccessMessage(`${user.fullName} için davet tekrar gönderildi.`);
+        } catch (error) {
+            setActionError(getErrorMessage(
+                error,
+                "Davet tekrar gönderilemedi."
+            ));
+        } finally {
+            setActiveActionUserId(null);
         }
     }
 
@@ -283,7 +303,7 @@ export function UsersPage() {
                         className="button button-primary"
                         onClick={startCreate}
                     >
-                    Yeni Kullanıcı
+                    Kullanıcı Davet Et
                 </button>
             )}
             </header>
@@ -295,12 +315,12 @@ export function UsersPage() {
                             <h2>
                                 {editingUser
                                     ? "Kullanıcıyı Düzenle"
-                                    : "Yeni Kullanıcı"}
+                                    : "Kullanıcı Davet Et"}
                             </h2>
                             <p className="page-description">
                                 {editingUser
                                     ? "Kullanıcının temel bilgilerini ve departmanını güncelleyin."
-                                    : "Yeni kullanıcı hesabını rolü ve departmanıyla oluşturun."}
+                                    : "Kullanıcıya rolü ve departmanıyla hesap daveti gönderin."}
                             </p>
                         </div>
                     </div>
@@ -339,24 +359,6 @@ export function UsersPage() {
                                 disabled={isSubmitting}
                             />
                         </div>
-
-                        {!editingUser && (
-                            <div className="form-group">
-                                <label htmlFor="user-password">Parola</label>
-                                <input
-                                    id="user-password"
-                                    type="password"
-                                    value={password}
-                                    minLength={8}
-                                    maxLength={128}
-                                    autoComplete="new-password"
-                                    onChange={(event) =>
-                                        setPassword(event.target.value)
-                                    }
-                                    disabled={isSubmitting}
-                                />
-                            </div>
-                        )}
 
                         {!editingUser && (
                             <div className="form-group">
@@ -420,7 +422,11 @@ export function UsersPage() {
                                     activeDepartments.length === 0
                                 }
                             >
-                                {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
+                                {isSubmitting
+                                    ? "Kaydediliyor..."
+                                    : editingUser
+                                        ? "Kaydet"
+                                        : "Daveti Gönder"}
                             </button>
 
                             <button
@@ -438,6 +444,11 @@ export function UsersPage() {
 
             {actionError && (
                 <p className="error-state" role="alert">{actionError}</p>
+            )}
+            {successMessage && (
+                <p className="success-state" role="status">
+                    {successMessage}
+                </p>
             )}
             {isLoading && (
                 <p className="loading-state">Kullanıcılar yükleniyor...</p>
@@ -499,7 +510,7 @@ export function UsersPage() {
                                 </td>
                                 <td>{user.departmentName}</td>
                                 <td>
-                                    <ActiveStatusBadge isActive={user.isActive} />
+                                    <AccountStatusBadge status={user.accountStatus} />
                                 </td>
                                 <td>
                                     {new Date(user.createdAt)
@@ -528,6 +539,19 @@ export function UsersPage() {
                                                 ? "Pasif Yap"
                                                 : "Aktif Yap"}
                                     </button>
+
+                                    {user.accountStatus === "PendingInvitation" && (
+                                        <button
+                                            type="button"
+                                            className="button button-secondary button-small"
+                                            onClick={() => handleResendInvitation(user)}
+                                            disabled={activeActionUserId !== null}
+                                        >
+                                            {activeActionUserId === user.id
+                                                ? "Gönderiliyor..."
+                                                : "Daveti Tekrar Gönder"}
+                                        </button>
+                                    )}
                                     </div>
                                 </td>
                             </tr>

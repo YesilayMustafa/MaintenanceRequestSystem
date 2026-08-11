@@ -1,4 +1,4 @@
-import type { UserRole } from "./auth";
+import type { AccountStatus, UserRole } from "./auth";
 
 export interface UserDto {
     id: string;
@@ -10,14 +10,14 @@ export interface UserDto {
     isActive: boolean;
     createdAt: string;
     updatedAt: string | null;
+    accountStatus: AccountStatus;
 }
 
 export type UserRoleValue = 1 | 2 | 3;
 
-export interface CreateUserRequest {
+export interface InviteUserRequest {
     fullName: string;
     email: string;
-    password: string;
     role: UserRoleValue;
     departmentId: string;
 }

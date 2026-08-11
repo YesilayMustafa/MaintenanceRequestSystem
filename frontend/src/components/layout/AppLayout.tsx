@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../auth/useAuth";
 import { AppNavigation } from "../AppNavigation";
@@ -12,6 +12,7 @@ const pageTitles: Array<{
     { path: "/departments", title: "Departman Yönetimi" },
     { path: "/users", title: "Kullanıcı Yönetimi" },
     { path: "/audit-logs", title: "Sistem Kayıtları" },
+    { path: "/profile", title: "Profil" },
 ];
 
 export function AppLayout() {
@@ -51,6 +52,12 @@ export function AppLayout() {
                             <strong>{user?.fullName}</strong>
                             <span>{user?.role}</span>
                         </div>
+                        <Link
+                            className="button button-secondary button-small"
+                            to="/profile"
+                        >
+                            Profil
+                        </Link>
                         <button
                             type="button"
                             className="button button-secondary button-small"

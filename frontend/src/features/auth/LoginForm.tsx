@@ -1,4 +1,5 @@
 import { useState, type SubmitEvent } from "react";
+import { Link } from "react-router-dom";
 import { ApiError } from "../../api/httpClient";
 import { useAuth } from "../../auth/useAuth";
 
@@ -75,6 +76,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             >
                 {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
+
+            <Link className="auth-link" to="/forgot-password">
+                Şifremi Unuttum
+            </Link>
         </form>
     );
 }

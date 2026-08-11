@@ -3,7 +3,7 @@ import { apiRequest } from "./httpClient";
 import type {
     ChangeUserRoleRequest,
     ChangeUserStatusRequest,
-    CreateUserRequest,
+    InviteUserRequest,
     UpdateUserRequest,
     UserDto,
 } from "../types/users";
@@ -18,16 +18,29 @@ export function getUsers(token: string): Promise<UserDto[]> {
     );
 }
 
-export function createUser(
+export function inviteUser(
     token: string,
-    request: CreateUserRequest
+    request: InviteUserRequest
 ): Promise<UserDto> {
     return apiRequest<UserDto>(
-        "/api/users",
+        "/api/users/invitations",
         {
             method: "POST",
             token,
             body: JSON.stringify(request),
+        }
+    );
+}
+
+export function resendInvitation(
+    token: string,
+    userId: string
+): Promise<void> {
+    return apiRequest<void>(
+        `/api/users/${userId}/invitations/resend`,
+        {
+            method: "POST",
+            token,
         }
     );
 }

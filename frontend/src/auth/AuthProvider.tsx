@@ -18,6 +18,7 @@ import {
     AuthContext,
     type AuthContextValue,
 } from "./AuthContext";
+import { registerUnauthorizedHandler } from "./authSession";
 
 const TOKEN_KEY = "mrs_access_token";
 const EXPIRES_AT_KEY = "mrs_expires_at";
@@ -54,6 +55,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const logout = useCallback(() => {
         clearSession();
+    }, [clearSession]);
+
+    useEffect(() => {
+        return registerUnauthorizedHandler(clearSession);
     }, [clearSession]);
 
     useEffect(() => {

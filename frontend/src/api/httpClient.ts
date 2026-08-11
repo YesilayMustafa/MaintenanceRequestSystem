@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from "../auth/authSession";
+
 const API_BASE_URL = normalizeBaseUrl(
     import.meta.env.VITE_API_BASE_URL
 );
@@ -52,6 +54,10 @@ export async function apiRequest<T>(
         headers: requestHeaders,
     });
 
+    if (response.status === 401 && token) {
+        notifyUnauthorized();
+    }
+
     if (!response.ok) {
         let problemDetails: ProblemDetails | undefined;
 
@@ -65,7 +71,7 @@ export async function apiRequest<T>(
             response.status,
             problemDetails?.detail ??
             problemDetails?.title ??
-            `API isteği başarısız oldu (${response.status}).`,
+            getDefaultErrorMessage(response.status),
             problemDetails
         );
     }
@@ -75,6 +81,22 @@ export async function apiRequest<T>(
     }
 
     return (await response.json()) as T;
+}
+
+function getDefaultErrorMessage(status: number): string {
+    if (status === 409) {
+        return "İşlem mevcut hesap durumuyla çakıştığı için tamamlanamadı.";
+    }
+
+    if (status === 429) {
+        return "Çok fazla istek gönderildi. Lütfen kısa bir süre sonra tekrar deneyin.";
+    }
+
+    if (status === 503) {
+        return "İşlem şu anda tamamlanamıyor. Lütfen daha sonra tekrar deneyin.";
+    }
+
+    return `API isteği başarısız oldu (${status}).`;
 }
 
 function normalizeBaseUrl(value: string | undefined): string {

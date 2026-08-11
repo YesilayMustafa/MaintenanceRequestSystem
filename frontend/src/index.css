@@ -611,6 +611,24 @@ button:hover:not(:disabled) {
     color: #475467;
 }
 
+.badge-account-active {
+    border-color: #abefc6;
+    background: var(--color-success-soft);
+    color: var(--color-success);
+}
+
+.badge-account-pendinginvitation {
+    border-color: #fedf89;
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+}
+
+.badge-account-inactive {
+    border-color: #d0d5dd;
+    background: #f2f4f7;
+    color: #475467;
+}
+
 .role-employee {
     border-color: #b2ddff;
     background: var(--color-info-soft);
@@ -664,10 +682,24 @@ button:hover:not(:disabled) {
     color: var(--color-text-muted);
 }
 
+.error-state,
+.success-state {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    font-size: 0.9rem;
+}
+
 .error-state {
     border-color: #fecdca;
     background: var(--color-danger-soft);
     color: var(--color-danger);
+}
+
+.success-state {
+    border-color: #abefc6;
+    background: var(--color-success-soft);
+    color: var(--color-success);
 }
 
 .details-grid {
@@ -941,6 +973,20 @@ button:hover:not(:disabled) {
 
 .login-form .button {
     width: 100%;
+}
+
+.auth-link {
+    text-align: center;
+}
+
+.auth-result {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.auth-result .success-state {
+    margin-bottom: 0;
 }
 
 .admin-page > h1,

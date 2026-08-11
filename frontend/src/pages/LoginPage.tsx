@@ -6,6 +6,7 @@ interface LocationState {
     from?: {
         pathname?: string;
     };
+    message?: string;
 }
 
 export function LoginPage() {
@@ -43,6 +44,12 @@ export function LoginPage() {
                         giriş yapın.
                     </p>
                 </div>
+
+                {state?.message && (
+                    <p className="success-state" role="status">
+                        {state.message}
+                    </p>
+                )}
 
                 <LoginForm onSuccess={handleLoginSuccess} />
             </section>

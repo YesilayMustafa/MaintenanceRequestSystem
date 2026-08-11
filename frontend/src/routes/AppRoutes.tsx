@@ -3,9 +3,13 @@ import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { RoleRoute } from "../auth/RoleRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AuditLogsPage } from "../pages/AuditLogsPage";
+import { AcceptInvitationPage } from "../pages/AcceptInvitationPage";
 import { AssetsPage } from "../pages/AssetsPage";
 import { DepartmentsPage } from "../pages/DepartmentsPage";
+import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
+import { ProfilePage } from "../pages/ProfilePage";
+import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { CreateTicketPage } from "../pages/CreateTicketPage";
 import { TicketsPage } from "../pages/TicketsPage";
 import { TicketDetailsPage } from "../pages/TicketDetailsPage";
@@ -25,6 +29,18 @@ export function AppRoutes() {
                 path="/login"
                 element={<LoginPage />}
             />
+            <Route
+                path="/forgot-password"
+                element={<ForgotPasswordPage />}
+            />
+            <Route
+                path="/accept-invitation"
+                element={<AcceptInvitationPage />}
+            />
+            <Route
+                path="/reset-password"
+                element={<ResetPasswordPage />}
+            />
 
             <Route
                 element={
@@ -35,6 +51,7 @@ export function AppRoutes() {
             >
                 <Route path="/assets" element={<AssetsPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route
                     path="/users"
                     element={

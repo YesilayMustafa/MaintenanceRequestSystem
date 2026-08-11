@@ -1,4 +1,4 @@
-import type { UserRole } from "../types/auth";
+import type { AccountStatus, UserRole } from "../types/auth";
 
 interface ActiveStatusBadgeProps {
     isActive: boolean;
@@ -13,6 +13,29 @@ export function ActiveStatusBadge({ isActive }: ActiveStatusBadgeProps) {
             }
         >
             {isActive ? "Aktif" : "Pasif"}
+        </span>
+    );
+}
+
+interface AccountStatusBadgeProps {
+    status: AccountStatus;
+}
+
+const accountStatusLabels: Record<AccountStatus, string> = {
+    Active: "Aktif",
+    PendingInvitation: "Davet Bekliyor",
+    Inactive: "Pasif",
+};
+
+export function AccountStatusBadge({ status }: AccountStatusBadgeProps) {
+    return (
+        <span
+            className={
+                `badge management-status-badge ` +
+                `badge-account-${status.toLowerCase()}`
+            }
+        >
+            {accountStatusLabels[status]}
         </span>
     );
 }
