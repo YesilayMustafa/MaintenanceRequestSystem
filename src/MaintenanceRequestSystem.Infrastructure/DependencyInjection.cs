@@ -38,6 +38,8 @@ public static class DependencyInjection
 
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IPasswordHashService, PasswordHashService>();
+        services.AddSingleton<IAccountTokenGenerator, AccountTokenGenerator>();
+        services.AddScoped<IAccountTokenRepository, AccountTokenRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAssetRepository, AssetRepository>();

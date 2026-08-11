@@ -34,6 +34,29 @@ public sealed class User
         DepartmentId = departmentId;
         IsActive = true;
         CreatedAt = DateTime.UtcNow;
+        InvitationAcceptedAt = CreatedAt;
+        SecurityVersion = 1;
+    }
+
+    private User(
+        string fullName,
+        string email,
+        UserRole role,
+        Guid departmentId)
+    {
+        Id = Guid.NewGuid();
+
+        FullName = NormalizeFullName(fullName);
+        Email = NormalizeEmail(email);
+
+        EnsureValidRole(role);
+        EnsureValidDepartmentId(departmentId);
+
+        Role = role;
+        DepartmentId = departmentId;
+        IsActive = true;
+        CreatedAt = DateTime.UtcNow;
+        SecurityVersion = 1;
     }
 
     public Guid Id { get; private set; }
@@ -42,7 +65,7 @@ public sealed class User
 
     public string Email { get; private set; } = string.Empty;
 
-    public string PasswordHash { get; private set; } = string.Empty;
+    public string? PasswordHash { get; private set; }
 
     public UserRole Role { get; private set; }
 
@@ -55,6 +78,10 @@ public sealed class User
     public DateTime CreatedAt { get; private set; }
 
     public DateTime? UpdatedAt { get; private set; }
+
+    public DateTime? InvitationAcceptedAt { get; private set; }
+
+    public int SecurityVersion { get; private set; }
 
     public ICollection<Ticket> CreatedTickets { get; private set; }
         = new List<Ticket>();
@@ -70,6 +97,55 @@ public sealed class User
 
     public ICollection<AuditLog> AuditLogs { get; private set; }
         = new List<AuditLog>();
+
+    public ICollection<AccountToken> AccountTokens { get; private set; }
+        = new List<AccountToken>();
+
+    public static User CreateInvited(
+        string fullName,
+        string email,
+        UserRole role,
+        Guid departmentId)
+    {
+        return new User(
+            fullName,
+            email,
+            role,
+            departmentId);
+    }
+
+    public void AcceptInvitation(string passwordHash)
+    {
+        if (InvitationAcceptedAt.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Kullanıcı daveti daha önce kabul edilmiş.");
+        }
+
+        if (!IsActive)
+        {
+            throw new InvalidOperationException(
+                "Pasif kullanıcı daveti kabul edemez.");
+        }
+
+        PasswordHash = NormalizePasswordHash(passwordHash);
+        InvitationAcceptedAt = DateTime.UtcNow;
+        IncrementSecurityVersion();
+        UpdatedAt = InvitationAcceptedAt;
+    }
+
+    public void ChangePasswordHash(string passwordHash)
+    {
+        if (!InvitationAcceptedAt.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Daveti kabul edilmemiş kullanıcının parolası değiştirilemez.");
+        }
+
+        PasswordHash = NormalizePasswordHash(passwordHash);
+        IncrementSecurityVersion();
+        UpdatedAt = DateTime.UtcNow;
+    }
 
     public void UpdateDetails(
         string fullName,
@@ -94,19 +170,37 @@ public sealed class User
     {
         EnsureValidRole(role);
 
+        if (Role == role)
+        {
+            return;
+        }
+
         Role = role;
+        IncrementSecurityVersion();
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Activate()
     {
+        if (IsActive)
+        {
+            return;
+        }
+
         IsActive = true;
+        IncrementSecurityVersion();
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Deactivate()
     {
+        if (!IsActive)
+        {
+            return;
+        }
+
         IsActive = false;
+        IncrementSecurityVersion();
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -212,5 +306,10 @@ public sealed class User
                 "Geçerli bir departman kimliği gereklidir.",
                 nameof(departmentId));
         }
+    }
+
+    private void IncrementSecurityVersion()
+    {
+        SecurityVersion = checked(SecurityVersion + 1);
     }
 }

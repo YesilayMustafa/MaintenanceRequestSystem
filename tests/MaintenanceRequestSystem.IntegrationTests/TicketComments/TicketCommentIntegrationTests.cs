@@ -158,7 +158,7 @@ public sealed class TicketCommentIntegrationTests
     }
 
     [Fact]
-    public async Task GetComments_WithUnsupportedRoleToken_ReturnsForbidden()
+    public async Task GetComments_WithUnsupportedRoleToken_ReturnsUnauthorized()
     {
         var setup =
             await CreateTicketSetupAsync();
@@ -175,7 +175,7 @@ public sealed class TicketCommentIntegrationTests
             await _client.SendAsync(request);
 
         Assert.Equal(
-            HttpStatusCode.Forbidden,
+            HttpStatusCode.Unauthorized,
             response.StatusCode);
     }
 

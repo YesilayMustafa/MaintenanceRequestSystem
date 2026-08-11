@@ -26,11 +26,13 @@ public interface IUserService
 
     Task ChangeStatusAsync(
         Guid id,
+        Guid performedByUserId,
         ChangeUserStatusRequest request,
         CancellationToken cancellationToken = default);
 
     Task ChangeRoleAsync(
         Guid id,
+        Guid performedByUserId,
         ChangeUserRoleRequest request,
         CancellationToken cancellationToken = default);
 }

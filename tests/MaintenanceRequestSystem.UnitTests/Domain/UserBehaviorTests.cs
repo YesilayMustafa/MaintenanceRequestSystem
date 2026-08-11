@@ -97,6 +97,8 @@ public sealed class UserBehaviorTests
             UserRole.Technician,
             user.Role);
 
+        Assert.Equal(2, user.SecurityVersion);
+
         Assert.NotNull(user.UpdatedAt);
 
         Assert.InRange(
@@ -137,6 +139,7 @@ public sealed class UserBehaviorTests
 
         // Assert
         Assert.False(user.IsActive);
+        Assert.Equal(2, user.SecurityVersion);
         Assert.NotNull(user.UpdatedAt);
     }
 
@@ -153,6 +156,22 @@ public sealed class UserBehaviorTests
 
         // Assert
         Assert.True(user.IsActive);
+        Assert.Equal(3, user.SecurityVersion);
+        Assert.NotNull(user.UpdatedAt);
+    }
+
+    [Fact]
+    public void ChangePasswordHash_WhenInvitationAccepted_ChangesHashAndInvalidatesSessions()
+    {
+        // Arrange
+        var user = CreateUser();
+
+        // Act
+        user.ChangePasswordHash("new-password-hash");
+
+        // Assert
+        Assert.Equal("new-password-hash", user.PasswordHash);
+        Assert.Equal(2, user.SecurityVersion);
         Assert.NotNull(user.UpdatedAt);
     }
 

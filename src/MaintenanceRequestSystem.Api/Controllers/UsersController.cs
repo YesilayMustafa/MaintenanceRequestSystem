@@ -1,5 +1,6 @@
 ﻿using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Api.Authentication;
 using MaintenanceRequestSystem.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +13,14 @@ namespace MaintenanceRequestSystem.Api.Controllers;
 public sealed class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ICurrentUserAccessor _currentUserAccessor;
 
-    public UsersController(IUserService userService)
+    public UsersController(
+        IUserService userService,
+        ICurrentUserAccessor currentUserAccessor)
     {
         _userService = userService;
+        _currentUserAccessor = currentUserAccessor;
     }
 
     [HttpGet]
@@ -109,8 +114,16 @@ public sealed class UsersController : ControllerBase
         ChangeUserStatusRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var performedByUserId,
+                out _))
+        {
+            return Unauthorized();
+        }
+
         await _userService.ChangeStatusAsync(
             id,
+            performedByUserId,
             request,
             cancellationToken);
 
@@ -129,8 +142,16 @@ public sealed class UsersController : ControllerBase
         ChangeUserRoleRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var performedByUserId,
+                out _))
+        {
+            return Unauthorized();
+        }
+
         await _userService.ChangeRoleAsync(
             id,
+            performedByUserId,
             request,
             cancellationToken);
 

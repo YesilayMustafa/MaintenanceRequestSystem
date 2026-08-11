@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 
 using MaintenanceRequestSystem.Infrastructure.Authentication;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace MaintenanceRequestSystem.IntegrationTests.Authentication;
 
@@ -26,7 +28,8 @@ public sealed class PasswordHashServiceTests
 
         // Assert
         Assert.NotEqual(password, passwordHash);
-        Assert.True(result);
+        Assert.True(result.Succeeded);
+        Assert.False(result.NeedsRehash);
     }
 
     [Fact]
@@ -45,6 +48,37 @@ public sealed class PasswordHashServiceTests
                 "WrongPassword123!");
 
         // Assert
-        Assert.False(result);
+        Assert.False(result.Succeeded);
+        Assert.False(result.NeedsRehash);
+    }
+
+    [Fact]
+    public void VerifyPassword_WithIdentityV2Hash_RequestsRehash()
+    {
+        // Arrange
+        const string password = "LegacyPassword123!";
+
+        var legacyHasher = new PasswordHasher<object>(
+            Options.Create(
+                new PasswordHasherOptions
+                {
+                    CompatibilityMode =
+                        PasswordHasherCompatibilityMode.IdentityV2
+                }));
+
+        var legacyHash = legacyHasher.HashPassword(
+            new object(),
+            password);
+
+        var service = new PasswordHashService();
+
+        // Act
+        var result = service.VerifyPassword(
+            legacyHash,
+            password);
+
+        // Assert
+        Assert.True(result.Succeeded);
+        Assert.True(result.NeedsRehash);
     }
 }

@@ -1,5 +1,9 @@
 ﻿using MaintenanceRequestSystem.Application.Authentication.Interfaces;
 using MaintenanceRequestSystem.Application.Common.Exceptions;
+using MaintenanceRequestSystem.Application.Authentication.Models;
+using MaintenanceRequestSystem.Application.AuditLogs.Dtos;
+using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
+using MaintenanceRequestSystem.Application.Common.Models;
 using MaintenanceRequestSystem.Application.Departments.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
@@ -365,6 +369,7 @@ public sealed class UserServiceTests
         // Act
         await service.ChangeRoleAsync(
             user.Id,
+            Guid.NewGuid(),
             request);
 
         // Assert
@@ -373,6 +378,7 @@ public sealed class UserServiceTests
             user.Role);
 
         Assert.NotNull(user.UpdatedAt);
+        Assert.Equal(2, user.SecurityVersion);
         Assert.Equal(1, userRepository.SaveChangesCallCount);
     }
 
@@ -403,23 +409,192 @@ public sealed class UserServiceTests
         // Act
         await service.ChangeStatusAsync(
             user.Id,
+            Guid.NewGuid(),
             request);
 
         // Assert
         Assert.False(user.IsActive);
+        Assert.Equal(2, user.SecurityVersion);
         Assert.NotNull(user.UpdatedAt);
+        Assert.Equal(1, userRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_WhenAdminDeactivatesSelf_ThrowsForbiddenException()
+    {
+        // Arrange
+        var admin = CreateUser(UserRole.Admin);
+
+        var userRepository = new FakeUserRepository
+        {
+            UserById = admin
+        };
+
+        var service = CreateService(
+            userRepository,
+            new FakeDepartmentRepository(),
+            new FakePasswordHashService());
+
+        // Act
+        var action = () => service.ChangeStatusAsync(
+            admin.Id,
+            admin.Id,
+            new ChangeUserStatusRequest
+            {
+                IsActive = false
+            });
+
+        // Assert
+        await Assert.ThrowsAsync<ForbiddenException>(action);
+        Assert.True(admin.IsActive);
+        Assert.Equal(0, userRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_WhenUserIsLastActiveAdmin_ThrowsConflictException()
+    {
+        // Arrange
+        var admin = CreateUser(UserRole.Admin);
+
+        var userRepository = new FakeUserRepository
+        {
+            UserById = admin
+        };
+        userRepository.Users.Add(admin);
+
+        var service = CreateService(
+            userRepository,
+            new FakeDepartmentRepository(),
+            new FakePasswordHashService());
+
+        // Act
+        var action = () => service.ChangeStatusAsync(
+            admin.Id,
+            Guid.NewGuid(),
+            new ChangeUserStatusRequest
+            {
+                IsActive = false
+            });
+
+        // Assert
+        await Assert.ThrowsAsync<ConflictException>(action);
+        Assert.True(admin.IsActive);
+        Assert.Equal(0, userRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ChangeRoleAsync_WhenUserIsLastActiveAdmin_ThrowsConflictException()
+    {
+        // Arrange
+        var admin = CreateUser(UserRole.Admin);
+
+        var userRepository = new FakeUserRepository
+        {
+            UserById = admin
+        };
+        userRepository.Users.Add(admin);
+
+        var service = CreateService(
+            userRepository,
+            new FakeDepartmentRepository(),
+            new FakePasswordHashService());
+
+        // Act
+        var action = () => service.ChangeRoleAsync(
+            admin.Id,
+            Guid.NewGuid(),
+            new ChangeUserRoleRequest
+            {
+                Role = UserRole.Employee
+            });
+
+        // Assert
+        await Assert.ThrowsAsync<ConflictException>(action);
+        Assert.Equal(UserRole.Admin, admin.Role);
+        Assert.Equal(0, userRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ChangeRoleAsync_WithValidRole_WritesAuditLog()
+    {
+        // Arrange
+        var user = CreateUser();
+        var auditLogService = new FakeAuditLogService();
+
+        var userRepository = new FakeUserRepository
+        {
+            UserById = user
+        };
+
+        var service = CreateService(
+            userRepository,
+            new FakeDepartmentRepository(),
+            new FakePasswordHashService(),
+            auditLogService);
+
+        // Act
+        await service.ChangeRoleAsync(
+            user.Id,
+            Guid.NewGuid(),
+            new ChangeUserRoleRequest
+            {
+                Role = UserRole.Technician
+            });
+
+        // Assert
+        Assert.Equal(1, auditLogService.AddCallCount);
+        Assert.Equal("UserRoleChanged", auditLogService.LastAction);
+        Assert.Equal(1, userRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_WithActivateRequest_WritesAuditLog()
+    {
+        // Arrange
+        var user = CreateUser();
+        user.Deactivate();
+
+        var auditLogService = new FakeAuditLogService();
+
+        var userRepository = new FakeUserRepository
+        {
+            UserById = user
+        };
+
+        var service = CreateService(
+            userRepository,
+            new FakeDepartmentRepository(),
+            new FakePasswordHashService(),
+            auditLogService);
+
+        // Act
+        await service.ChangeStatusAsync(
+            user.Id,
+            Guid.NewGuid(),
+            new ChangeUserStatusRequest
+            {
+                IsActive = true
+            });
+
+        // Assert
+        Assert.True(user.IsActive);
+        Assert.Equal(3, user.SecurityVersion);
+        Assert.Equal(1, auditLogService.AddCallCount);
+        Assert.Equal("UserActivated", auditLogService.LastAction);
         Assert.Equal(1, userRepository.SaveChangesCallCount);
     }
 
     private static UserService CreateService(
         FakeUserRepository userRepository,
         FakeDepartmentRepository departmentRepository,
-        FakePasswordHashService passwordHashService)
+        FakePasswordHashService passwordHashService,
+        FakeAuditLogService? auditLogService = null)
     {
         return new UserService(
             userRepository,
             departmentRepository,
-            passwordHashService);
+            passwordHashService,
+            auditLogService ?? new FakeAuditLogService());
     }
 
     private static CreateUserRequest CreateUserRequestFor(
@@ -435,13 +610,14 @@ public sealed class UserServiceTests
         };
     }
 
-    private static User CreateUser()
+    private static User CreateUser(
+        UserRole role = UserRole.Employee)
     {
         return new User(
             "Ahmet Yılmaz",
             "ahmet@example.com",
             "existing-password-hash",
-            UserRole.Employee,
+            role,
             Guid.NewGuid());
     }
 
@@ -599,11 +775,49 @@ public sealed class UserServiceTests
             return HashToReturn;
         }
 
-        public bool VerifyPassword(
-            string passwordHash,
+        public PasswordVerificationOutcome VerifyPassword(
+            string? passwordHash,
             string providedPassword)
         {
-            return passwordHash == providedPassword;
+            return passwordHash == providedPassword
+                ? PasswordVerificationOutcome.Success
+                : PasswordVerificationOutcome.Failed;
+        }
+    }
+
+    private sealed class FakeAuditLogService
+        : IAuditLogService
+    {
+        public int AddCallCount { get; private set; }
+
+        public string? LastAction { get; private set; }
+
+        public Task<PagedResult<AuditLogDto>> GetPagedAsync(
+            AuditLogListQuery query,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                new PagedResult<AuditLogDto>(
+                    [],
+                    query.PageNumber,
+                    query.PageSize,
+                    0,
+                    0));
+        }
+
+        public Task AddAsync(
+            Guid performedByUserId,
+            string action,
+            string entityName,
+            string entityId,
+            object? oldValues = null,
+            object? newValues = null,
+            CancellationToken cancellationToken = default)
+        {
+            AddCallCount++;
+            LastAction = action;
+
+            return Task.CompletedTask;
         }
     }
 }

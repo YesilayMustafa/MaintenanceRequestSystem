@@ -48,7 +48,7 @@ public sealed partial class TicketManagementIntegrationTests
     }
 
     [Fact]
-    public async Task GetTickets_WithUnsupportedRoleToken_ReturnsForbidden()
+    public async Task GetTickets_WithUnsupportedRoleToken_ReturnsUnauthorized()
     {
         var accessToken =
             CreateTokenWithRole("999");
@@ -63,7 +63,7 @@ public sealed partial class TicketManagementIntegrationTests
             await _client.SendAsync(request);
 
         Assert.Equal(
-            HttpStatusCode.Forbidden,
+            HttpStatusCode.Unauthorized,
             response.StatusCode);
     }
 

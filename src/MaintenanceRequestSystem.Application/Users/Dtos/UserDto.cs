@@ -13,4 +13,5 @@ public sealed record UserDto(
     string DepartmentName,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string AccountStatus);

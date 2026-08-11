@@ -1,9 +1,8 @@
 ﻿using MaintenanceRequestSystem.Application.Authentication.Dtos;
 using MaintenanceRequestSystem.Application.Authentication.Interfaces;
+using MaintenanceRequestSystem.Api.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 
 namespace MaintenanceRequestSystem.Api.Controllers;
 
@@ -12,11 +11,14 @@ namespace MaintenanceRequestSystem.Api.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService;
+    private readonly ICurrentUserAccessor _currentUserAccessor;
 
     public AuthController(
-        IAuthenticationService authenticationService)
+        IAuthenticationService authenticationService,
+        ICurrentUserAccessor currentUserAccessor)
     {
         _authenticationService = authenticationService;
+        _currentUserAccessor = currentUserAccessor;
     }
 
     [AllowAnonymous]
@@ -46,36 +48,21 @@ public sealed class AuthController : ControllerBase
     typeof(CurrentUserDto),
     StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public ActionResult<CurrentUserDto> GetCurrentUser()
+    public async Task<ActionResult<CurrentUserDto>> GetCurrentUser(
+        CancellationToken cancellationToken)
     {
-        var userIdValue =
-            User.FindFirstValue(
-                JwtRegisteredClaimNames.Sub);
-
-        var fullName =
-            User.FindFirstValue(
-                JwtRegisteredClaimNames.Name);
-
-        var email =
-            User.FindFirstValue(
-                JwtRegisteredClaimNames.Email);
-
-        var role =
-            User.FindFirstValue("role");
-
-        if (!Guid.TryParse(userIdValue, out var userId) ||
-            string.IsNullOrWhiteSpace(fullName) ||
-            string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(role))
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var userId,
+                out _))
         {
             return Unauthorized();
         }
 
-        return Ok(
-            new CurrentUserDto(
+        var currentUser =
+            await _authenticationService.GetCurrentUserAsync(
                 userId,
-                fullName,
-                email,
-                role));
+                cancellationToken);
+
+        return Ok(currentUser);
     }
 }

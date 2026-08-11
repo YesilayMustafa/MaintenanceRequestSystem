@@ -48,12 +48,34 @@ public sealed class AuthenticationService : IAuthenticationService
 
         if (user is null ||
             !user.IsActive ||
-            !_passwordHashService.VerifyPassword(
-                user.PasswordHash,
-                request.Password))
+            !user.InvitationAcceptedAt.HasValue ||
+            string.IsNullOrWhiteSpace(user.PasswordHash))
         {
             throw new InvalidCredentialsException(
                 "E-posta veya parola hatalı.");
+        }
+
+        var passwordVerification =
+            _passwordHashService.VerifyPassword(
+                user.PasswordHash,
+                request.Password);
+
+        if (!passwordVerification.Succeeded)
+        {
+            throw new InvalidCredentialsException(
+                "E-posta veya parola hatalı.");
+        }
+
+        if (passwordVerification.NeedsRehash)
+        {
+            var updatedPasswordHash =
+                _passwordHashService.HashPassword(
+                    request.Password);
+
+            user.ChangePasswordHash(updatedPasswordHash);
+
+            await _userRepository.SaveChangesAsync(
+                cancellationToken);
         }
 
         var token =
@@ -70,5 +92,38 @@ public sealed class AuthenticationService : IAuthenticationService
             token.AccessToken,
             token.ExpiresAt,
             userDto);
+    }
+
+    public async Task<CurrentUserDto> GetCurrentUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new InvalidCredentialsException(
+                "Kimlik doğrulama bilgileri geçersiz.");
+        }
+
+        var user = await _userRepository.GetByIdAsync(
+            userId,
+            cancellationToken);
+
+        if (user is null ||
+            !user.IsActive ||
+            !user.InvitationAcceptedAt.HasValue)
+        {
+            throw new InvalidCredentialsException(
+                "Kimlik doğrulama bilgileri geçersiz.");
+        }
+
+        return new CurrentUserDto(
+            user.Id,
+            user.FullName,
+            user.Email,
+            user.Role.ToString(),
+            user.DepartmentId,
+            user.Department?.Name ?? string.Empty,
+            user.IsActive,
+            "Active");
     }
 }

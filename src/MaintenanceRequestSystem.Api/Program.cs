@@ -4,6 +4,7 @@ using MaintenanceRequestSystem.Infrastructure.Persistence;
 using MaintenanceRequestSystem.Api.ExceptionHandling;
 using MaintenanceRequestSystem.Api.Extensions;
 using MaintenanceRequestSystem.Api.OpenApi;
+using MaintenanceRequestSystem.Api.Authentication;
 
 const string FrontendCorsPolicy = "FrontendDevelopment";
 
@@ -17,6 +18,10 @@ var allowedOrigins =
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("postgresql");
 builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<
+    ICurrentUserAccessor,
+    CurrentUserAccessor>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
