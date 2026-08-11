@@ -515,6 +515,41 @@ public sealed class UserServiceTests
     }
 
     [Fact]
+    public async Task ChangeRoleAsync_WhenOtherAdminIsPendingInvitation_StillProtectsLastOperationalAdmin()
+    {
+        var activeAdmin = CreateUser(UserRole.Admin);
+        var pendingAdmin = User.CreateInvited(
+            "Pending Admin",
+            "pending.admin@example.com",
+            UserRole.Admin,
+            Guid.NewGuid());
+
+        var userRepository = new FakeUserRepository
+        {
+            UserById = activeAdmin
+        };
+        userRepository.Users.Add(activeAdmin);
+        userRepository.Users.Add(pendingAdmin);
+
+        var service = CreateService(
+            userRepository,
+            new FakeDepartmentRepository(),
+            new FakePasswordHashService());
+
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            service.ChangeRoleAsync(
+                activeAdmin.Id,
+                Guid.NewGuid(),
+                new ChangeUserRoleRequest
+                {
+                    Role = UserRole.Employee
+                }));
+
+        Assert.Equal(UserRole.Admin, activeAdmin.Role);
+        Assert.Equal(0, userRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
     public async Task ChangeRoleAsync_WithValidRole_WritesAuditLog()
     {
         // Arrange

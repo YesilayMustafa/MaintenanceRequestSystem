@@ -113,8 +113,7 @@ public static class AuthenticationExtensions
                                 context.HttpContext.RequestAborted);
 
                             if (user is null ||
-                                !user.IsActive ||
-                                !user.InvitationAcceptedAt.HasValue ||
+                                !user.IsOperational ||
                                 user.SecurityVersion != securityVersion ||
                                 user.Role != role)
                             {

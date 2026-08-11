@@ -83,6 +83,18 @@ public sealed class User
 
     public int SecurityVersion { get; private set; }
 
+    public bool IsOperational =>
+        IsActive &&
+        InvitationAcceptedAt.HasValue &&
+        !string.IsNullOrWhiteSpace(PasswordHash);
+
+    public AccountStatus AccountStatus =>
+        !IsActive
+            ? AccountStatus.Inactive
+            : IsOperational
+                ? AccountStatus.Active
+                : AccountStatus.PendingInvitation;
+
     public ICollection<Ticket> CreatedTickets { get; private set; }
         = new List<Ticket>();
 

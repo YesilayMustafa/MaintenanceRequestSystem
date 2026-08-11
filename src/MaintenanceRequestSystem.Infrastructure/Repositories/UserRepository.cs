@@ -13,6 +13,9 @@ namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 
 public sealed class UserRepository : IUserRepository
 {
+    private static readonly SemaphoreSlim InMemoryTransactionLock =
+        new(1, 1);
+
     private readonly ApplicationDbContext _context;
 
     public UserRepository(ApplicationDbContext context)
@@ -97,6 +100,11 @@ public sealed class UserRepository : IUserRepository
             throw new ConflictException(
                 "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var.");
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException(
+                "Hesap tokenı başka bir istek tarafından kullanıldı veya değiştirildi.");
+        }
     }
 
     public async Task ExecuteInTransactionAsync(
@@ -107,8 +115,18 @@ public sealed class UserRepository : IUserRepository
 
         if (!_context.Database.IsRelational())
         {
-            await operation(cancellationToken);
-            return;
+            await InMemoryTransactionLock.WaitAsync(
+                cancellationToken);
+
+            try
+            {
+                await operation(cancellationToken);
+                return;
+            }
+            finally
+            {
+                InMemoryTransactionLock.Release();
+            }
         }
 
         await using var transaction =

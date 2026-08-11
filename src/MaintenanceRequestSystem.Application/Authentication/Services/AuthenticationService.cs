@@ -46,10 +46,7 @@ public sealed class AuthenticationService : IAuthenticationService
                 normalizedEmail,
                 cancellationToken);
 
-        if (user is null ||
-            !user.IsActive ||
-            !user.InvitationAcceptedAt.HasValue ||
-            string.IsNullOrWhiteSpace(user.PasswordHash))
+        if (user is null || !user.IsOperational)
         {
             throw new InvalidCredentialsException(
                 "E-posta veya parola hatalı.");
@@ -108,9 +105,7 @@ public sealed class AuthenticationService : IAuthenticationService
             userId,
             cancellationToken);
 
-        if (user is null ||
-            !user.IsActive ||
-            !user.InvitationAcceptedAt.HasValue)
+        if (user is null || !user.IsOperational)
         {
             throw new InvalidCredentialsException(
                 "Kimlik doğrulama bilgileri geçersiz.");
@@ -124,6 +119,6 @@ public sealed class AuthenticationService : IAuthenticationService
             user.DepartmentId,
             user.Department?.Name ?? string.Empty,
             user.IsActive,
-            "Active");
+            user.AccountStatus.ToString());
     }
 }

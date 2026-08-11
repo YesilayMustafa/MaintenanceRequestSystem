@@ -5,6 +5,8 @@ using MaintenanceRequestSystem.Api.ExceptionHandling;
 using MaintenanceRequestSystem.Api.Extensions;
 using MaintenanceRequestSystem.Api.OpenApi;
 using MaintenanceRequestSystem.Api.Authentication;
+using MaintenanceRequestSystem.Api.RateLimiting;
+using MaintenanceRequestSystem.Application.Authentication.Models;
 
 const string FrontendCorsPolicy = "FrontendDevelopment";
 
@@ -48,11 +50,18 @@ builder.Services.AddOpenApi(options =>
 });
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddAccountRateLimiting(builder.Configuration);
+builder.Services.AddInfrastructure(
+    builder.Configuration,
+    builder.Environment.IsDevelopment());
 
 builder.Services.AddJwtAuthentication();
 
 var app = builder.Build();
+
+// Production dahil tüm ortamlarda lifecycle link yapılandırması startup sırasında doğrulanır.
+_ = app.Services.GetRequiredService<AccountLifecycleSettings>();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -71,6 +80,7 @@ else
 
 app.UseCors(FrontendCorsPolicy);
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");

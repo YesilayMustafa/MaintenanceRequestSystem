@@ -18,7 +18,7 @@ public sealed class PasswordHashService : IPasswordHashService
 
     public string HashPassword(string password)
     {
-        if (string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrEmpty(password))
         {
             throw new ArgumentException(
                 "Parola boş olamaz.",
@@ -35,7 +35,7 @@ public sealed class PasswordHashService : IPasswordHashService
         string providedPassword)
     {
         if (string.IsNullOrWhiteSpace(passwordHash) ||
-            string.IsNullOrWhiteSpace(providedPassword))
+            string.IsNullOrEmpty(providedPassword))
         {
             return PasswordVerificationOutcome.Failed;
         }

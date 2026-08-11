@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 using MaintenanceRequestSystem.Application.Authentication.Interfaces;
+using MaintenanceRequestSystem.Application.Authentication.Services;
 using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
 using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Departments.Interfaces;
@@ -15,9 +16,6 @@ namespace MaintenanceRequestSystem.Application.Users.Services;
 
 public sealed class UserService : IUserService
 {
-    private const int MinPasswordLength = 8;
-    private const int MaxPasswordLength = 128;
-
     private readonly IUserRepository _userRepository;
     private readonly IDepartmentRepository _departmentRepository;
     private readonly IPasswordHashService _passwordHashService;
@@ -73,7 +71,7 @@ public sealed class UserService : IUserService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        ValidatePassword(request.Password);
+        PasswordPolicy.EnsureValid(request.Password);
 
         var emailExists =
             await _userRepository.EmailExistsAsync(
@@ -348,28 +346,6 @@ public sealed class UserService : IUserService
             cancellationToken);
     }
 
-    private static void ValidatePassword(
-        string password)
-    {
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            throw new RequestValidationException(
-                "Parola boş olamaz.");
-        }
-
-        if (password.Length < MinPasswordLength)
-        {
-            throw new RequestValidationException(
-                $"Parola en az {MinPasswordLength} karakter olmalıdır.");
-        }
-
-        if (password.Length > MaxPasswordLength)
-        {
-            throw new RequestValidationException(
-                $"Parola en fazla {MaxPasswordLength} karakter olabilir.");
-        }
-    }
-
     private static void EnsureValidId(Guid id)
     {
         if (id == Guid.Empty)
@@ -388,7 +364,7 @@ public sealed class UserService : IUserService
 
         var anotherActiveAdminExists = users.Any(user =>
             user.Id != excludedUserId &&
-            user.IsActive &&
+            user.IsOperational &&
             user.Role == UserRole.Admin);
 
         if (!anotherActiveAdminExists)
@@ -414,18 +390,6 @@ public sealed class UserService : IUserService
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
-            GetAccountStatus(user));
-    }
-
-    private static string GetAccountStatus(User user)
-    {
-        if (!user.IsActive)
-        {
-            return "Inactive";
-        }
-
-        return user.InvitationAcceptedAt.HasValue
-            ? "Active"
-            : "PendingInvitation";
+            user.AccountStatus.ToString());
     }
 }

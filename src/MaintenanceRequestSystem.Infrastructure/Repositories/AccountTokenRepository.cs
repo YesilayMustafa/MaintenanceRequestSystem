@@ -3,12 +3,16 @@ using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 
 public sealed class AccountTokenRepository
     : IAccountTokenRepository
 {
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim>
+        InMemoryTokenLocks = new();
+
     private readonly ApplicationDbContext _context;
 
     public AccountTokenRepository(ApplicationDbContext context)
@@ -21,6 +25,7 @@ public sealed class AccountTokenRepository
         CancellationToken cancellationToken = default)
     {
         return _context.AccountTokens
+            .AsNoTracking()
             .SingleOrDefaultAsync(
                 token => token.TokenHash == tokenHash,
                 cancellationToken);
@@ -51,6 +56,56 @@ public sealed class AccountTokenRepository
         await _context.AccountTokens.AddAsync(
             accountToken,
             cancellationToken);
+    }
+
+    public async Task<bool> TryConsumeAsync(
+        Guid tokenId,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        if (_context.Database.IsRelational())
+        {
+            var affectedRows = await _context.AccountTokens
+                .Where(token =>
+                    token.Id == tokenId &&
+                    token.UsedAt == null &&
+                    token.RevokedAt == null &&
+                    token.ExpiresAt > utcNow)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        token => token.UsedAt,
+                        utcNow),
+                    cancellationToken);
+
+            return affectedRows == 1;
+        }
+
+        var tokenLock = InMemoryTokenLocks.GetOrAdd(
+            tokenId,
+            _ => new SemaphoreSlim(1, 1));
+
+        await tokenLock.WaitAsync(cancellationToken);
+
+        try
+        {
+            var token = await _context.AccountTokens
+                .SingleOrDefaultAsync(
+                    accountToken => accountToken.Id == tokenId,
+                    cancellationToken);
+
+            if (token is null || !token.CanBeUsed(utcNow))
+            {
+                return false;
+            }
+
+            token.Consume(utcNow);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        finally
+        {
+            tokenLock.Release();
+        }
     }
 
     public async Task SaveChangesAsync(

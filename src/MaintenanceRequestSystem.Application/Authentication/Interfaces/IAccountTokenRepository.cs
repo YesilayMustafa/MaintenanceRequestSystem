@@ -19,6 +19,11 @@ public interface IAccountTokenRepository
         AccountToken accountToken,
         CancellationToken cancellationToken = default);
 
+    Task<bool> TryConsumeAsync(
+        Guid tokenId,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }
