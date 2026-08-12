@@ -65,6 +65,10 @@ export function getTickets(
         searchParams.set("assetId", query.assetId);
     }
 
+    if (query.ticketNumber) {
+        searchParams.set("ticketNumber", query.ticketNumber);
+    }
+
     return apiRequest<PagedResult<TicketDto>>(
         `/api/tickets?${searchParams.toString()}`,
         {

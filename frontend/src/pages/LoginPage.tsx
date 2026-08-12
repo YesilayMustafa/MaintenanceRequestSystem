@@ -15,7 +15,7 @@ export function LoginPage() {
     const location = useLocation();
 
     const state = location.state as LocationState | null;
-    const returnPath = state?.from?.pathname ?? "/tickets";
+    const returnPath = state?.from?.pathname ?? "/dashboard";
 
     if (isLoading) {
         return (
@@ -26,7 +26,7 @@ export function LoginPage() {
     }
 
     if (isAuthenticated) {
-        return <Navigate to="/tickets" replace />;
+        return <Navigate to={returnPath} replace />;
     }
 
     function handleLoginSuccess() {

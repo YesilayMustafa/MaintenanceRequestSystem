@@ -168,6 +168,7 @@ export function TicketDetailsPage() {
                     <Link to="/tickets" className="table-link">
                         ← Talep listesine dön
                     </Link>
+                    <p className="ticket-reference">{ticket.ticketNumber}</p>
                     <h1 className="page-title">{ticket.title}</h1>
                     <div className="page-header-actions">
                         <TicketStatusBadge status={ticket.status} />
@@ -187,6 +188,10 @@ export function TicketDetailsPage() {
                         <p className="description-text">{ticket.description}</p>
 
                         <dl className="definition-grid">
+                            <div className="definition-item">
+                                <dt>Talep No</dt>
+                                <dd className="ticket-number">{ticket.ticketNumber}</dd>
+                            </div>
                             <div className="definition-item">
                                 <dt>Cihaz</dt>
                                 <dd>{ticket.assetName}</dd>

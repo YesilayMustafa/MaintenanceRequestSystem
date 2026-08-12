@@ -1,4 +1,9 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import {
+    Link,
+    Outlet,
+    useLocation,
+    useNavigate,
+} from "react-router-dom";
 
 import { useAuth } from "../../auth/useAuth";
 import { AppNavigation } from "../AppNavigation";
@@ -7,6 +12,7 @@ const pageTitles: Array<{
     path: string;
     title: string;
 }> = [
+    { path: "/dashboard", title: "Genel Bakış" },
     { path: "/tickets", title: "Talep Yönetimi" },
     { path: "/assets", title: "Cihaz Yönetimi" },
     { path: "/departments", title: "Departman Yönetimi" },
@@ -18,10 +24,16 @@ const pageTitles: Array<{
 export function AppLayout() {
     const { user, logout } = useAuth();
     const location = useLocation();
+    const navigate = useNavigate();
 
     const pageTitle = pageTitles.find(({ path }) =>
         location.pathname.startsWith(path)
     )?.title ?? "Service Desk";
+
+    function handleLogout() {
+        logout();
+        navigate("/login", { replace: true });
+    }
 
     return (
         <div className="app-shell">
@@ -61,7 +73,7 @@ export function AppLayout() {
                         <button
                             type="button"
                             className="button button-secondary button-small"
-                            onClick={logout}
+                            onClick={handleLogout}
                         >
                             Çıkış Yap
                         </button>

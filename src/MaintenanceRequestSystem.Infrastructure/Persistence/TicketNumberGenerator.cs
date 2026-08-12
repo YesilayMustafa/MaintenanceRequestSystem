@@ -2,6 +2,7 @@ using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Domain.ValueObjects;
 using MaintenanceRequestSystem.Infrastructure.Persistence.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MaintenanceRequestSystem.Infrastructure.Persistence;
 
@@ -40,23 +41,57 @@ public sealed class TicketNumberGenerator : ITicketNumberGenerator
         int year,
         CancellationToken cancellationToken)
     {
-        var nextValue =
-            await _context.Database
-                .SqlQuery<long>($"""
-                    WITH next_number AS
-                    (
-                        INSERT INTO ticket_number_sequences (year, last_value)
-                        VALUES ({year}, 1)
-                        ON CONFLICT (year) DO UPDATE
-                        SET last_value = ticket_number_sequences.last_value + 1
-                        RETURNING last_value
-                    )
-                    SELECT last_value AS "Value"
-                    FROM next_number
-                    """)
-                .SingleAsync(cancellationToken);
+        var connection = _context.Database.GetDbConnection();
+        var shouldCloseConnection =
+            connection.State != System.Data.ConnectionState.Open;
 
-        return nextValue;
+        if (shouldCloseConnection)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+
+            command.CommandText =
+                """
+            INSERT INTO ticket_number_sequences (year, last_value)
+            VALUES (@year, 1)
+            ON CONFLICT (year) DO UPDATE
+            SET last_value = ticket_number_sequences.last_value + 1
+            RETURNING last_value;
+            """;
+
+            var yearParameter = command.CreateParameter();
+            yearParameter.ParameterName = "year";
+            yearParameter.Value = year;
+            command.Parameters.Add(yearParameter);
+
+            var currentTransaction = _context.Database.CurrentTransaction;
+
+            if (currentTransaction is not null)
+            {
+                command.Transaction = currentTransaction.GetDbTransaction();
+            }
+
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+
+            if (result is null || result is DBNull)
+            {
+                throw new InvalidOperationException(
+                    "Ticket number sequence could not be generated.");
+            }
+
+            return Convert.ToInt64(result);
+        }
+        finally
+        {
+            if (shouldCloseConnection)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 
     private async Task<long> NextInMemoryAsync(

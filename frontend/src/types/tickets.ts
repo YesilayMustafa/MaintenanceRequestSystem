@@ -25,6 +25,7 @@ export type TicketSortBy =
 
 export interface TicketDto {
     id: string;
+    ticketNumber: string;
     title: string;
     description: string;
 
@@ -92,6 +93,7 @@ export interface TicketListQuery {
     status?: TicketStatusValue;
     priority?: TicketPriorityValue;
     assetId?: string;
+    ticketNumber?: string;
     sortBy?: TicketSortBy;
     sortDescending?: boolean;
 }

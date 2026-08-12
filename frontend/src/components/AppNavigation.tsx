@@ -7,6 +7,7 @@ export function AppNavigation() {
 
     return (
         <nav className="sidebar-nav" aria-label="Ana navigasyon">
+            <NavItem to="/dashboard" marker="G" label="Genel Bakış" />
             <NavItem to="/tickets" marker="T" label="Talepler" />
             <NavItem to="/assets" marker="C" label="Cihazlar" />
             <NavItem to="/departments" marker="D" label="Departmanlar" />
