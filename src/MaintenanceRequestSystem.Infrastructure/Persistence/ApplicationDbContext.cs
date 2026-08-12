@@ -38,6 +38,8 @@ public sealed class ApplicationDbContext : DbContext
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<Notification> Notifications => Set<Notification>();
+
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
 
     public DbSet<TicketNumberSequence> TicketNumberSequences

@@ -2,6 +2,8 @@
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Domain.Enums;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
@@ -11,13 +13,16 @@ public sealed class TicketTechnicianLifecycleService
 {
     private readonly ITicketRepository _ticketRepository;
     private readonly IUserRepository _userRepository;
+    private readonly INotificationWriter _notificationWriter;
 
     public TicketTechnicianLifecycleService(
         ITicketRepository ticketRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        INotificationWriter? notificationWriter = null)
     {
         _ticketRepository = ticketRepository;
         _userRepository = userRepository;
+        _notificationWriter = notificationWriter ?? new NullNotificationWriter();
     }
 
     /// <summary>
@@ -82,6 +87,14 @@ public sealed class TicketTechnicianLifecycleService
 
         ticket.StartProgress(
             currentUserId);
+
+        await AddCreatorStatusNotificationAsync(
+            ticket,
+            currentUserId,
+            NotificationType.TicketStatusChanged,
+            "Talep işleme alındı",
+            $"{ticket.TicketNumber} numaralı talebiniz işleme alındı.",
+            cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
@@ -158,6 +171,14 @@ public sealed class TicketTechnicianLifecycleService
             request.Reason,
             currentUserId);
 
+        await AddCreatorStatusNotificationAsync(
+            ticket,
+            currentUserId,
+            NotificationType.TicketStatusChanged,
+            "Talep beklemeye alındı",
+            $"{ticket.TicketNumber} numaralı talebiniz beklemeye alındı.",
+            cancellationToken);
+
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
 
@@ -222,6 +243,14 @@ public sealed class TicketTechnicianLifecycleService
 
         ticket.Resume(
             currentUserId);
+
+        await AddCreatorStatusNotificationAsync(
+            ticket,
+            currentUserId,
+            NotificationType.TicketStatusChanged,
+            "Talepte işleme devam edildi",
+            $"{ticket.TicketNumber} numaralı talebinizde işleme devam edildi.",
+            cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
@@ -300,11 +329,37 @@ public sealed class TicketTechnicianLifecycleService
             request.ResolutionDescription,
             currentUserId);
 
+        await AddCreatorStatusNotificationAsync(
+            ticket,
+            currentUserId,
+            NotificationType.TicketResolved,
+            "Talep çözüldü",
+            $"{ticket.TicketNumber} numaralı talebiniz çözüldü.",
+            cancellationToken);
+
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
 
         return TicketDtoMapper.MapToDto(
             ticket,
             assignedTechnician: technician);
+    }
+
+    private Task AddCreatorStatusNotificationAsync(
+        Domain.Entities.Ticket ticket,
+        Guid actorUserId,
+        NotificationType type,
+        string title,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        return _notificationWriter.AddAsync(
+            actorUserId,
+            [ticket.CreatedByUserId],
+            type,
+            title,
+            message,
+            ticket.Id,
+            cancellationToken);
     }
 }

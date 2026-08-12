@@ -113,6 +113,9 @@ public sealed class User
     public ICollection<AuditLog> AuditLogs { get; private set; }
         = new List<AuditLog>();
 
+    public ICollection<Notification> Notifications { get; private set; }
+        = new List<Notification>();
+
     public ICollection<AccountToken> AccountTokens { get; private set; }
         = new List<AccountToken>();
 

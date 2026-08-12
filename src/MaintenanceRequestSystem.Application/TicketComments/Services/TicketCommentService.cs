@@ -3,6 +3,8 @@ using MaintenanceRequestSystem.Application.TicketComments.Dtos;
 using MaintenanceRequestSystem.Application.TicketComments.Interfaces;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 
@@ -20,14 +22,19 @@ public sealed class TicketCommentService
     private readonly IUserRepository
         _userRepository;
 
+    private readonly INotificationWriter
+        _notificationWriter;
+
     public TicketCommentService(
         ITicketCommentRepository commentRepository,
         ITicketRepository ticketRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        INotificationWriter? notificationWriter = null)
     {
         _commentRepository = commentRepository;
         _ticketRepository = ticketRepository;
         _userRepository = userRepository;
+        _notificationWriter = notificationWriter ?? new NullNotificationWriter();
     }
 
     public async Task<IReadOnlyList<TicketCommentDto>>
@@ -121,6 +128,22 @@ public sealed class TicketCommentService
 
         await _commentRepository.AddAsync(
             comment,
+            cancellationToken);
+
+        var recipients = new List<Guid> { ticket.CreatedByUserId };
+
+        if (ticket.AssignedTechnicianId.HasValue)
+        {
+            recipients.Add(ticket.AssignedTechnicianId.Value);
+        }
+
+        await _notificationWriter.AddAsync(
+            currentUserId,
+            recipients,
+            NotificationType.TicketCommentAdded,
+            "Talebe yeni yorum eklendi",
+            $"{ticket.TicketNumber} numaralı talebe yeni bir yorum eklendi.",
+            ticket.Id,
             cancellationToken);
 
         await _commentRepository.SaveChangesAsync(

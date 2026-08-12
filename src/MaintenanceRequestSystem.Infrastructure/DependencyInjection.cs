@@ -29,6 +29,8 @@ using MaintenanceRequestSystem.Application.TicketAttachments.Interfaces;
 using MaintenanceRequestSystem.Application.TicketAttachments.Models;
 using MaintenanceRequestSystem.Application.TicketAttachments.Services;
 using MaintenanceRequestSystem.Infrastructure.Attachments;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -55,6 +57,12 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAssetRepository, AssetRepository>();
         services.AddScoped<IAssetService, AssetService>();
+        services.AddScoped<
+            IAssetMaintenanceHistoryRepository,
+            AssetMaintenanceHistoryRepository>();
+        services.AddScoped<
+            IAssetMaintenanceHistoryService,
+            AssetMaintenanceHistoryService>();
         services.AddScoped<ITicketCategoryRepository, TicketCategoryRepository>();
         services.AddScoped<ITicketCategoryService, TicketCategoryService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
@@ -102,6 +110,13 @@ public static class DependencyInjection
         services.AddScoped<
             ITicketAttachmentService,
             TicketAttachmentService>();
+
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<NotificationService>();
+        services.AddScoped<INotificationService>(provider =>
+            provider.GetRequiredService<NotificationService>());
+        services.AddScoped<INotificationWriter>(provider =>
+            provider.GetRequiredService<NotificationService>());
 
         services.AddScoped<
             IAuthenticationService,

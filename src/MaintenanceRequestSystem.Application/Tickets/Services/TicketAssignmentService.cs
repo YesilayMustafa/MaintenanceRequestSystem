@@ -3,6 +3,8 @@ using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 
@@ -13,15 +15,18 @@ public sealed class TicketAssignmentService : ITicketAssignmentService
     private readonly ITicketRepository _ticketRepository;
     private readonly IUserRepository _userRepository;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationWriter _notificationWriter;
 
     public TicketAssignmentService(
         ITicketRepository ticketRepository,
         IUserRepository userRepository,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationWriter? notificationWriter = null)
     {
         _ticketRepository = ticketRepository;
         _userRepository = userRepository;
         _auditLogService = auditLogService;
+        _notificationWriter = notificationWriter ?? new NullNotificationWriter();
     }
 
     /// <summary>
@@ -123,6 +128,15 @@ public sealed class TicketAssignmentService : ITicketAssignmentService
             },
             cancellationToken);
 
+        await _notificationWriter.AddAsync(
+            currentUserId,
+            [technician.Id],
+            NotificationType.TicketAssigned,
+            "Yeni talep ataması",
+            $"{ticket.TicketNumber} numaralı talep size atandı.",
+            ticket.Id,
+            cancellationToken);
+
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
 
@@ -222,6 +236,15 @@ public sealed class TicketAssignmentService : ITicketAssignmentService
             ticket.AssignedTechnicianId
     },
     cancellationToken);
+
+        await _notificationWriter.AddAsync(
+            currentUserId,
+            [technician.Id],
+            NotificationType.TicketReassigned,
+            "Talep yeniden atandı",
+            $"{ticket.TicketNumber} numaralı talep size yeniden atandı.",
+            ticket.Id,
+            cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
