@@ -30,6 +30,9 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<TicketComment> TicketComments
         => Set<TicketComment>();
 
+    public DbSet<TicketAttachment> TicketAttachments
+        => Set<TicketAttachment>();
+
     public DbSet<TicketHistory> TicketHistories
         => Set<TicketHistory>();
 

@@ -34,6 +34,11 @@ public class CustomWebApplicationFactory
     private readonly string _databaseName =
     $"MaintenanceRequestSystemTests-{Guid.NewGuid()}";
 
+    private readonly string _attachmentRoot = Path.Combine(
+        Path.GetTempPath(),
+        "MaintenanceRequestSystemTests",
+        Guid.NewGuid().ToString("N"));
+
     private readonly InMemoryDatabaseRoot _databaseRoot = new();
 
     private const string TestIssuer =
@@ -81,6 +86,7 @@ public class CustomWebApplicationFactory
                         ["Frontend:BaseUrl"] =
                             "https://frontend.integration.example",
                         ["Email:Mode"] = "DevelopmentFile",
+                        ["Attachments:StorageRootPath"] = _attachmentRoot,
 
                         ["SeedAdmin:Email"] = AdminEmail,
                         ["SeedAdmin:Password"] = AdminPassword,
@@ -115,5 +121,15 @@ public class CustomWebApplicationFactory
             services.AddSingleton<IEmailSender>(provider =>
                 provider.GetRequiredService<TestEmailSender>());
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (disposing && Directory.Exists(_attachmentRoot))
+        {
+            Directory.Delete(_attachmentRoot, recursive: true);
+        }
     }
 }

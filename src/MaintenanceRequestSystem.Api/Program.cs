@@ -7,6 +7,7 @@ using MaintenanceRequestSystem.Api.OpenApi;
 using MaintenanceRequestSystem.Api.Authentication;
 using MaintenanceRequestSystem.Api.RateLimiting;
 using MaintenanceRequestSystem.Application.Authentication.Models;
+using Microsoft.AspNetCore.Http.Features;
 
 const string FrontendCorsPolicy = "FrontendDevelopment";
 
@@ -20,6 +21,13 @@ var allowedOrigins =
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("postgresql");
 builder.Services.AddControllers();
+builder.Services.Configure<FormOptions>(options =>
+{
+    var maxFileSizeBytes = builder.Configuration.GetValue<long?>(
+        "Attachments:MaxFileSizeBytes") ?? 10 * 1024 * 1024;
+
+    options.MultipartBodyLengthLimit = maxFileSizeBytes + 1024 * 1024;
+});
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<
     ICurrentUserAccessor,

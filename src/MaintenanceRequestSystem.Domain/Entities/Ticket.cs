@@ -137,6 +137,9 @@ public sealed class Ticket
     public ICollection<TicketHistory> Histories { get; private set; }
         = new List<TicketHistory>();
 
+    public ICollection<TicketAttachment> Attachments { get; private set; }
+        = new List<TicketAttachment>();
+
     /// <summary>
     /// Açık bir talebi ilk kez teknik personele atar ve Open → Assigned geçmişini oluşturur.
     /// Application katmanı bu davranışı yalnızca Admin adına ve aktif Technician hedefi için çağırmalıdır;

@@ -25,6 +25,10 @@ using MaintenanceRequestSystem.Application.Dashboard.Interfaces;
 using MaintenanceRequestSystem.Application.Dashboard.Services;
 using MaintenanceRequestSystem.Application.Categories.Interfaces;
 using MaintenanceRequestSystem.Application.Categories.Services;
+using MaintenanceRequestSystem.Application.TicketAttachments.Interfaces;
+using MaintenanceRequestSystem.Application.TicketAttachments.Models;
+using MaintenanceRequestSystem.Application.TicketAttachments.Services;
+using MaintenanceRequestSystem.Infrastructure.Attachments;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -86,6 +90,19 @@ public static class DependencyInjection
             ITicketCommentService,
             TicketCommentService>();
 
+        var attachmentSettings = CreateAttachmentSettings(
+            configuration,
+            isDevelopment);
+
+        services.AddSingleton(attachmentSettings);
+        services.AddSingleton<IAttachmentStorage, FileSystemAttachmentStorage>();
+        services.AddScoped<
+            ITicketAttachmentRepository,
+            TicketAttachmentRepository>();
+        services.AddScoped<
+            ITicketAttachmentService,
+            TicketAttachmentService>();
+
         services.AddScoped<
             IAuthenticationService,
             AuthenticationService>();
@@ -127,6 +144,61 @@ public static class DependencyInjection
 
 
         return services;
+    }
+
+    private static AttachmentSettings CreateAttachmentSettings(
+        IConfiguration configuration,
+        bool isDevelopment)
+    {
+        var section = configuration.GetSection(AttachmentSettings.SectionName);
+        var rootPath = section["StorageRootPath"];
+
+        if (string.IsNullOrWhiteSpace(rootPath))
+        {
+            if (!isDevelopment)
+            {
+                throw new InvalidOperationException(
+                    "Attachments:StorageRootPath production ortamında yapılandırılmalıdır.");
+            }
+
+            rootPath = Path.Combine(
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.LocalApplicationData),
+                "MaintenanceRequestSystem",
+                "attachments");
+        }
+
+        var maxFileSizeBytes = section.GetValue<long?>("MaxFileSizeBytes")
+            ?? 10 * 1024 * 1024;
+        var maxAttachmentsPerTicket =
+            section.GetValue<int?>("MaxAttachmentsPerTicket") ?? 10;
+
+        if (maxFileSizeBytes <= 0 || maxAttachmentsPerTicket <= 0)
+        {
+            throw new InvalidOperationException(
+                "Attachment limit configuration değerleri sıfırdan büyük olmalıdır.");
+        }
+
+        var extensions = section
+            .GetSection("AllowedExtensions")
+            .Get<string[]>() ?? [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+        var contentTypes = section
+            .GetSection("AllowedContentTypes")
+            .Get<string[]>() ??
+            ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+
+        return new AttachmentSettings
+        {
+            StorageRootPath = rootPath,
+            MaxFileSizeBytes = maxFileSizeBytes,
+            MaxAttachmentsPerTicket = maxAttachmentsPerTicket,
+            AllowedExtensions = new HashSet<string>(
+                extensions.Select(value => value.Trim().ToLowerInvariant()),
+                StringComparer.OrdinalIgnoreCase),
+            AllowedContentTypes = new HashSet<string>(
+                contentTypes.Select(value => value.Trim().ToLowerInvariant()),
+                StringComparer.OrdinalIgnoreCase)
+        };
     }
 
     private static void AddAccountLifecycleConfiguration(

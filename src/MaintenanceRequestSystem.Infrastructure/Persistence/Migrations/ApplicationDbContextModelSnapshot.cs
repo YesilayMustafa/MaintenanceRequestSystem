@@ -379,6 +379,56 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                     b.ToTable("ticket_categories", (string)null);
                 });
 
+            modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.TicketAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_file_name");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_id");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("TicketId", "CreatedAt");
+
+                    b.ToTable("ticket_attachments", (string)null);
+                });
+
             modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.TicketComment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -627,6 +677,25 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.TicketAttachment", b =>
+                {
+                    b.HasOne("MaintenanceRequestSystem.Domain.Entities.Ticket", "Ticket")
+                        .WithMany("Attachments")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MaintenanceRequestSystem.Domain.Entities.User", "UploadedByUser")
+                        .WithMany("UploadedAttachments")
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ticket");
+
+                    b.Navigation("UploadedByUser");
+                });
+
             modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.TicketHistory", b =>
                 {
                     b.HasOne("MaintenanceRequestSystem.Domain.Entities.User", "PerformedByUser")
@@ -671,6 +740,8 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.Ticket", b =>
                 {
+                    b.Navigation("Attachments");
+
                     b.Navigation("Comments");
 
                     b.Navigation("Histories");
@@ -694,6 +765,8 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                     b.Navigation("CreatedTickets");
 
                     b.Navigation("TicketHistories");
+
+                    b.Navigation("UploadedAttachments");
                 });
 #pragma warning restore 612, 618
         }
