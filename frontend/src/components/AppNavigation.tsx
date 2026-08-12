@@ -10,11 +10,12 @@ export function AppNavigation() {
             <NavItem to="/dashboard" marker="G" label="Genel Bakış" />
             <NavItem to="/tickets" marker="T" label="Talepler" />
             <NavItem to="/assets" marker="C" label="Cihazlar" />
-            <NavItem to="/departments" marker="D" label="Departmanlar" />
 
             {user?.role === "Admin" && (
                 <>
                     <p className="sidebar-section-label">Yönetim</p>
+                    <NavItem to="/categories" marker="K" label="Kategoriler" />
+                    <NavItem to="/departments" marker="D" label="Departmanlar" />
                     <NavItem to="/users" marker="K" label="Kullanıcılar" />
                     <NavItem
                         to="/audit-logs"
@@ -22,6 +23,10 @@ export function AppNavigation() {
                         label="Audit Logları"
                     />
                 </>
+            )}
+
+            {user?.role !== "Admin" && (
+                <NavItem to="/departments" marker="D" label="Departmanlar" />
             )}
         </nav>
     );

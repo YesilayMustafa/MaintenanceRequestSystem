@@ -21,7 +21,9 @@ export type TicketSortBy =
     | "createdAt"
     | "title"
     | "priority"
-    | "status";
+    | "status"
+    | "ticketNumber"
+    | "category";
 
 export interface TicketDto {
     id: string;
@@ -35,6 +37,9 @@ export interface TicketDto {
     assetId: string;
     assetName: string;
     assetSerialNumber: string;
+
+    categoryId: string;
+    categoryName: string;
 
     createdByUserId: string;
     createdByFullName: string;
@@ -80,8 +85,13 @@ export interface ChangeTicketPriorityRequest {
     priority: TicketPriorityValue;
 }
 
+export interface ChangeTicketCategoryRequest {
+    categoryId: string;
+}
+
 export interface CreateTicketRequest {
     assetId: string;
+    categoryId: string;
     title: string;
     description: string;
     priority: TicketPriorityValue;
@@ -94,6 +104,13 @@ export interface TicketListQuery {
     priority?: TicketPriorityValue;
     assetId?: string;
     ticketNumber?: string;
+    search?: string;
+    categoryId?: string;
+    createdByUserId?: string;
+    assignedTechnicianId?: string;
+    departmentId?: string;
+    createdFrom?: string;
+    createdTo?: string;
     sortBy?: TicketSortBy;
     sortDescending?: boolean;
 }

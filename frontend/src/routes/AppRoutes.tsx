@@ -3,6 +3,7 @@ import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { RoleRoute } from "../auth/RoleRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AuditLogsPage } from "../pages/AuditLogsPage";
+import { CategoriesPage } from "../pages/CategoriesPage";
 import { AcceptInvitationPage } from "../pages/AcceptInvitationPage";
 import { AssetsPage } from "../pages/AssetsPage";
 import { DepartmentsPage } from "../pages/DepartmentsPage";
@@ -54,6 +55,14 @@ export function AppRoutes() {
                 <Route path="/assets" element={<AssetsPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route
+                    path="/categories"
+                    element={
+                        <RoleRoute allowedRoles={[...adminRoles]}>
+                            <CategoriesPage />
+                        </RoleRoute>
+                    }
+                />
                 <Route
                     path="/users"
                     element={

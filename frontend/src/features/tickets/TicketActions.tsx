@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 
 import { ApiError } from "../../api/httpClient";
+import { getCategories } from "../../api/categoriesApi";
 import {
     assignTicket,
     cancelTicket,
+    changeTicketCategory,
     changeTicketPriority,
     closeTicket,
     putOnHold,
@@ -17,6 +19,7 @@ import {
 import { getUsers } from "../../api/usersApi";
 
 import type { AuthenticatedUser } from "../../types/auth";
+import type { TicketCategoryDto } from "../../types/categories";
 import type {
     TicketDto,
     TicketPriority,
@@ -57,7 +60,9 @@ export function TicketActions({
     onSoftDeleted,
 }: TicketActionsProps) {
     const [technicians, setTechnicians] = useState<UserDto[]>([]);
+    const [categories, setCategories] = useState<TicketCategoryDto[]>([]);
     const [selectedTechnicianId, setSelectedTechnicianId] = useState("");
+    const [selectedCategoryId, setSelectedCategoryId] = useState("");
     const [selectedPriority, setSelectedPriority] =
         useState<TicketPriorityValue>(priorityValues[ticket.priority]);
     const [waitingReason, setWaitingReason] = useState("");
@@ -65,7 +70,9 @@ export function TicketActions({
     const [reopenReason, setReopenReason] = useState("");
     const [activeAction, setActiveAction] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
     const [isTechniciansLoading, setIsTechniciansLoading] = useState(false);
+    const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
 
     const isAdmin = user.role === "Admin";
     const isTicketOwner =
@@ -126,8 +133,48 @@ export function TicketActions({
     }, [needsTechnicianList, token]);
 
     useEffect(() => {
+        let cancelled = false;
+
+        async function loadCategories() {
+            if (!isAdmin) {
+                return;
+            }
+
+            try {
+                setIsCategoriesLoading(true);
+                const result = await getCategories(token);
+
+                if (!cancelled) {
+                    setCategories(result);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setActionError(getErrorMessage(
+                        error,
+                        "Kategori seçenekleri yüklenemedi."
+                    ));
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsCategoriesLoading(false);
+                }
+            }
+        }
+
+        loadCategories();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAdmin, token]);
+
+    useEffect(() => {
         setSelectedPriority(priorityValues[ticket.priority]);
     }, [ticket.priority]);
+
+    useEffect(() => {
+        setSelectedCategoryId("");
+    }, [ticket.categoryId]);
 
     const technicianOptions =
         ticket.status === "Assigned"
@@ -164,6 +211,7 @@ export function TicketActions({
         ["Assigned", "InProgress", "Waiting"].includes(ticket.status);
 
     const hasAnyAction =
+        isAdmin ||
         needsTechnicianList ||
         canChangePriority ||
         canClose ||
@@ -184,11 +232,16 @@ export function TicketActions({
         try {
             setActiveAction(actionName);
             setActionError(null);
+            setActionSuccess(null);
 
             const updatedTicket = await action();
 
             await onTicketUpdated(updatedTicket);
             clearInput?.();
+
+            if (actionName === "category") {
+                setActionSuccess("Talep kategorisi güncellendi.");
+            }
         } catch (error) {
             setActionError(getErrorMessage(
                 error,
@@ -229,6 +282,10 @@ export function TicketActions({
 
             {actionError && (
                 <p className="error-state" role="alert">{actionError}</p>
+            )}
+
+            {actionSuccess && (
+                <p className="success-state" role="status">{actionSuccess}</p>
             )}
 
             {!hasAnyAction && (
@@ -354,6 +411,65 @@ export function TicketActions({
                         )}
                     >
                         Öncelik Değiştir
+                    </button>
+                </div>
+            )}
+
+            {isAdmin && (
+                <div className="action-group">
+                    <p className="muted-text">
+                        Mevcut kategori: <strong>{ticket.categoryName}</strong>
+                    </p>
+                    <label htmlFor="category-select">
+                        Kategoriyi Değiştir
+                    </label>
+                    <select
+                        id="category-select"
+                        value={selectedCategoryId}
+                        onChange={(event) =>
+                            setSelectedCategoryId(event.target.value)
+                        }
+                        disabled={
+                            isCategoriesLoading ||
+                            activeAction !== null
+                        }
+                    >
+                        <option value="">
+                            {isCategoriesLoading
+                                ? "Kategoriler yükleniyor..."
+                                : "Yeni kategori seçin"}
+                        </option>
+                        {categories
+                            .filter((category) =>
+                                category.id !== ticket.categoryId
+                            )
+                            .map((category) => (
+                                <option
+                                    key={category.id}
+                                    value={category.id}
+                                >
+                                    {category.name}
+                                </option>
+                            ))}
+                    </select>
+                    <button
+                        type="button"
+                        className="button button-secondary"
+                        disabled={
+                            activeAction !== null ||
+                            !selectedCategoryId
+                        }
+                        onClick={() => runTicketAction(
+                            "category",
+                            () => changeTicketCategory(
+                                token,
+                                ticket.id,
+                                { categoryId: selectedCategoryId }
+                            ),
+                            () => setSelectedCategoryId("")
+                        )}
+                    >
+                        Kategoriyi Değiştir
                     </button>
                 </div>
             )}
