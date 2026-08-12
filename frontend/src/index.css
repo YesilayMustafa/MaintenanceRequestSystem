@@ -702,6 +702,113 @@ button:hover:not(:disabled) {
     color: var(--color-success);
 }
 
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.summary-card {
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+}
+
+.summary-label,
+.summary-value,
+.summary-description {
+    display: block;
+}
+
+.summary-label {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.summary-value {
+    margin-top: 8px;
+    color: var(--color-text);
+    font-size: 2rem;
+    font-weight: 750;
+    line-height: 1;
+}
+
+.summary-description {
+    margin-top: 10px;
+    color: var(--color-text-muted);
+    font-size: 0.76rem;
+    line-height: 1.4;
+}
+
+.dashboard-admin-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
+    gap: 24px;
+}
+
+.attention-card {
+    border-color: #fedf89;
+    background: var(--color-warning-soft);
+}
+
+.workload-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.workload-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+}
+
+.workload-list li:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.ticket-number,
+.ticket-reference {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    white-space: nowrap;
+}
+
+.ticket-reference {
+    margin: 14px 0 4px;
+    color: #184f95;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.dashboard-table-container {
+    border: 0;
+    box-shadow: none;
+}
+
+.dashboard-table-container table {
+    min-width: 920px;
+}
+
 .details-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.8fr);
@@ -1017,6 +1124,10 @@ pre {
 }
 
 @media (max-width: 1180px) {
+    .summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .toolbar-grid {
         grid-template-columns: repeat(3, minmax(150px, 1fr));
     }
@@ -1031,6 +1142,14 @@ pre {
 }
 
 @media (max-width: 900px) {
+    .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-admin-grid {
+        grid-template-columns: 1fr;
+    }
+
     .app-shell {
         grid-template-columns: 1fr;
     }
@@ -1086,7 +1205,8 @@ pre {
     .toolbar-grid,
     .audit-toolbar-grid,
     .form-grid,
-    .definition-grid {
+    .definition-grid,
+    .summary-grid {
         grid-template-columns: 1fr;
     }
 

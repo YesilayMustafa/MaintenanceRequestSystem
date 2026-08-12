@@ -342,6 +342,7 @@ public sealed class TicketCommentServiceTests
         Guid createdByUserId)
     {
         return new Ticket(
+            "REQ-2000-999999",
             Guid.NewGuid(),
             createdByUserId,
             "Bilgisayar açılmıyor",

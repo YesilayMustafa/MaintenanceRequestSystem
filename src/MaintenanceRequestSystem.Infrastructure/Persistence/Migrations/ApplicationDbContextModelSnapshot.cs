@@ -286,6 +286,12 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
+                    b.Property<string>("TicketNumber")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("ticket_number");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -316,6 +322,9 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                     b.HasIndex("Priority");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("TicketNumber")
+                        .IsUnique();
 
                     b.ToTable("tickets", (string)null);
                 });
@@ -465,6 +474,21 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("MaintenanceRequestSystem.Infrastructure.Persistence.Models.TicketNumberSequence", b =>
+                {
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.Property<long>("LastValue")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_value");
+
+                    b.HasKey("Year");
+
+                    b.ToTable("ticket_number_sequences", (string)null);
                 });
 
             modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.AccountToken", b =>

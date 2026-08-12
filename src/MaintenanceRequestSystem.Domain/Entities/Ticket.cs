@@ -1,5 +1,7 @@
 ﻿using MaintenanceRequestSystem.Domain.Enums;
 
+using MaintenanceRequestSystem.Domain.ValueObjects;
+
 namespace MaintenanceRequestSystem.Domain.Entities;
 
 /// <summary>
@@ -22,6 +24,7 @@ public sealed class Ticket
     /// Yeni bir talebi açık durumda oluşturur.
     /// </summary>
     public Ticket(
+        string ticketNumber,
         Guid assetId,
         Guid createdByUserId,
         string title,
@@ -34,11 +37,15 @@ public sealed class Ticket
         var normalizedDescription =
             NormalizeDescription(description);
 
+        var normalizedTicketNumber =
+            TicketNumberValue.Normalize(ticketNumber);
+
         EnsureValidAssetId(assetId);
         EnsureValidUserId(createdByUserId);
         EnsureValidPriority(priority);
 
         Id = Guid.NewGuid();
+        TicketNumber = normalizedTicketNumber;
         AssetId = assetId;
         CreatedByUserId = createdByUserId;
         Title = normalizedTitle;
@@ -49,6 +56,8 @@ public sealed class Ticket
     }
 
     public Guid Id { get; private set; }
+
+    public string TicketNumber { get; private set; } = string.Empty;
 
     public string Title { get; private set; } = string.Empty;
 

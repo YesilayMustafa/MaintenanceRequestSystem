@@ -19,6 +19,7 @@ public sealed partial class TicketServiceTests
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 asset.Id,
                 creator.Id,
                 "Bilgisayar açılmıyor",
@@ -137,6 +138,7 @@ new TicketAssignmentService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Bilgisayar açılmıyor",
@@ -211,6 +213,7 @@ new TicketAssignmentService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Bilgisayar açılmıyor",
@@ -258,6 +261,7 @@ new TicketAssignmentService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Bilgisayar açılmıyor",
@@ -306,6 +310,7 @@ new TicketAssignmentService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Bilgisayar açılmıyor",
@@ -356,6 +361,7 @@ new TicketAssignmentService(
             Guid.NewGuid());
 
         var ticket = new Ticket(
+            "REQ-2000-999999",
             Guid.NewGuid(),
             creator.Id,
             "Bilgisayar açılmıyor",
@@ -398,6 +404,7 @@ new TicketAssignmentService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 asset.Id,
                 creator.Id,
                 "Bilgisayar açılmıyor",

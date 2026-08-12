@@ -756,6 +756,7 @@ public sealed class AccountLifecycleIntegrationTests
             "Integration Test");
         dbContext.Assets.Add(asset);
         var ticket = new Ticket(
+            "REQ-2000-999999",
             asset.Id,
             adminId,
             "Pending technician security test",

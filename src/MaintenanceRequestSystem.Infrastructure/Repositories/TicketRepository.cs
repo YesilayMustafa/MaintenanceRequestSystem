@@ -27,21 +27,10 @@ public sealed class TicketRepository : ITicketRepository
                 .Include(ticket => ticket.CreatedByUser)
                 .Include(ticket => ticket.AssignedTechnician);
 
-        if (currentUserRole == UserRole.Employee)
-        {
-            ticketQuery =
-                ticketQuery.Where(
-                    ticket =>
-                        ticket.CreatedByUserId == currentUserId);
-        }
-
-        if (currentUserRole == UserRole.Technician)
-        {
-            ticketQuery =
-                ticketQuery.Where(
-                    ticket =>
-                        ticket.AssignedTechnicianId == currentUserId);
-        }
+        ticketQuery = TicketQueryScope.Apply(
+            ticketQuery,
+            currentUserId,
+            currentUserRole);
 
         if (query.Status.HasValue)
         {
@@ -65,6 +54,16 @@ public sealed class TicketRepository : ITicketRepository
                 ticketQuery.Where(
                     ticket =>
                         ticket.AssetId == query.AssetId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.TicketNumber))
+        {
+            var ticketNumberPrefix =
+                query.TicketNumber.Trim().ToUpperInvariant();
+
+            ticketQuery =
+                ticketQuery.Where(ticket =>
+                    ticket.TicketNumber.StartsWith(ticketNumberPrefix));
         }
 
         var totalCount =

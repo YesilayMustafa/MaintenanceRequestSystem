@@ -13,6 +13,7 @@ public sealed partial class TicketBehaviorTests
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creatorId,
                 "Sunucu bağlantı sorunu",
@@ -50,6 +51,7 @@ public sealed partial class TicketBehaviorTests
     {
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 "Sunucu bağlantı sorunu",
@@ -77,6 +79,7 @@ public sealed partial class TicketBehaviorTests
     {
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 "Sunucu bağlantı sorunu",
@@ -114,6 +117,7 @@ public sealed partial class TicketBehaviorTests
     {
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 "Sunucu bağlantı sorunu",

@@ -3,6 +3,7 @@ import {
     useState,
     type SubmitEvent,
 } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { getDepartments } from "../api/departmentsApi";
 import { ApiError } from "../api/httpClient";
@@ -44,7 +45,8 @@ const roleValues: Record<UserRole, UserRoleValue> = {
 };
 
 export function UsersPage() {
-    const { token } = useAuth();
+    const { token, user: currentUser, logout } = useAuth();
+    const navigate = useNavigate();
 
     const [users, setUsers] = useState<UserDto[]>([]);
     const [departments, setDepartments] = useState<DepartmentDto[]>([]);
@@ -275,6 +277,18 @@ export function UsersPage() {
             setActiveActionUserId(user.id);
             setActionError(null);
             await changeUserRole(token, user.id, { role: nextRole });
+
+            if (user.id === currentUser?.id) {
+                logout();
+                navigate("/login", {
+                    replace: true,
+                    state: {
+                        message: "Yetkiniz değiştirildi. Lütfen yeniden giriş yapın.",
+                    },
+                });
+                return;
+            }
+
             await refreshUsers();
         } catch (error) {
             setActionError(getErrorMessage(

@@ -266,6 +266,15 @@ public sealed class TicketQueryService : ITicketQueryService
                 "Geçerli bir cihaz kimliği gereklidir.");
         }
 
+
+        if (query.TicketNumber is not null &&
+            (string.IsNullOrWhiteSpace(query.TicketNumber) ||
+             query.TicketNumber.Trim().Length > 15))
+        {
+            throw new RequestValidationException(
+                "Talep numarası filtresi 1 ile 15 karakter arasında olmalıdır.");
+        }
+
         var allowedSortFields =
             new[]
             {

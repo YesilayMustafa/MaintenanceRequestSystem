@@ -69,6 +69,7 @@ export function TicketsPage() {
     const [priority, setPriority] =
         useState<TicketPriorityValue | "">("");
     const [assetId, setAssetId] = useState("");
+    const [ticketNumber, setTicketNumber] = useState("");
     const [sortBy, setSortBy] =
         useState<TicketSortBy>("createdAt");
     const [sortDescending, setSortDescending] = useState(true);
@@ -128,6 +129,7 @@ export function TicketsPage() {
                     status: status || undefined,
                     priority: priority || undefined,
                     assetId: assetId || undefined,
+                    ticketNumber: ticketNumber || undefined,
                     sortBy,
                     sortDescending,
                 });
@@ -162,6 +164,7 @@ export function TicketsPage() {
         sortBy,
         sortDescending,
         status,
+        ticketNumber,
         token,
     ]);
 
@@ -197,6 +200,21 @@ export function TicketsPage() {
                 </div>
 
                 <div className="toolbar-grid">
+                    <div className="form-group">
+                        <label htmlFor="ticket-number-filter">Talep No</label>
+                        <input
+                            id="ticket-number-filter"
+                            type="text"
+                            value={ticketNumber}
+                            maxLength={15}
+                            placeholder="REQ-2026-"
+                            onChange={(event) => {
+                                setTicketNumber(event.target.value);
+                                resetPage();
+                            }}
+                        />
+                    </div>
+
                     <div className="form-group">
                     <label htmlFor="ticket-status-filter">Durum</label>
                     <select
@@ -336,6 +354,7 @@ export function TicketsPage() {
                     <table>
                         <thead>
                             <tr>
+                                <th>Talep No</th>
                                 <th>Başlık</th>
                                 <th>Durum</th>
                                 <th>Öncelik</th>
@@ -349,6 +368,14 @@ export function TicketsPage() {
                         <tbody>
                             {result.items.map((ticket) => (
                                 <tr key={ticket.id}>
+                                    <td>
+                                        <Link
+                                            to={`/tickets/${ticket.id}`}
+                                            className="table-link ticket-number"
+                                        >
+                                            {ticket.ticketNumber}
+                                        </Link>
+                                    </td>
                                     <td>
                                         <Link
                                             to={`/tickets/${ticket.id}`}

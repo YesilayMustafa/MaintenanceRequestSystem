@@ -23,6 +23,7 @@ public sealed partial class TicketServiceTests
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Sunucu bağlantı sorunu",
@@ -76,6 +77,7 @@ new TicketQueryService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Sunucu bağlantı sorunu",
@@ -125,6 +127,7 @@ new TicketQueryService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Sunucu bağlantı sorunu",
@@ -171,6 +174,7 @@ new TicketQueryService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Sunucu bağlantı sorunu",
@@ -211,6 +215,7 @@ new TicketQueryService(
 
         var ticket =
             new Ticket(
+                "REQ-2000-999999",
                 Guid.NewGuid(),
                 creator.Id,
                 "Sunucu bağlantı sorunu",

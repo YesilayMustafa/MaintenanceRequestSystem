@@ -8,6 +8,7 @@ public sealed partial class TicketBehaviorTests
     private static Ticket CreateTicket()
     {
         return new Ticket(
+            "REQ-2000-999999",
             Guid.NewGuid(),
             Guid.NewGuid(),
             "Test talebi",

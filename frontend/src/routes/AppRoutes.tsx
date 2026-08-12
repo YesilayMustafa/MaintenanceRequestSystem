@@ -6,6 +6,7 @@ import { AuditLogsPage } from "../pages/AuditLogsPage";
 import { AcceptInvitationPage } from "../pages/AcceptInvitationPage";
 import { AssetsPage } from "../pages/AssetsPage";
 import { DepartmentsPage } from "../pages/DepartmentsPage";
+import { DashboardPage } from "../pages/DashboardPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { ProfilePage } from "../pages/ProfilePage";
@@ -22,7 +23,7 @@ export function AppRoutes() {
         <Routes>
             <Route
                 path="/"
-                element={<Navigate to="/tickets" replace />}
+                element={<Navigate to="/dashboard" replace />}
             />
 
             <Route
@@ -49,6 +50,7 @@ export function AppRoutes() {
                     </ProtectedRoute>
                 }
             >
+                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/assets" element={<AssetsPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
@@ -75,7 +77,7 @@ export function AppRoutes() {
 
             <Route
                 path="*"
-                element={<Navigate to="/tickets" replace />}
+                element={<Navigate to="/dashboard" replace />}
             />
         </Routes>
     );

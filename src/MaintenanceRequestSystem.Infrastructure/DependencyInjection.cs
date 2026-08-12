@@ -21,6 +21,8 @@ using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
 using MaintenanceRequestSystem.Application.AuditLogs.Services;
 using MaintenanceRequestSystem.Application.Authentication.Models;
 using MaintenanceRequestSystem.Infrastructure.Email;
+using MaintenanceRequestSystem.Application.Dashboard.Interfaces;
+using MaintenanceRequestSystem.Application.Dashboard.Services;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -48,6 +50,9 @@ public static class DependencyInjection
         services.AddScoped<IAssetRepository, AssetRepository>();
         services.AddScoped<IAssetService, AssetService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
+        services.AddScoped<ITicketNumberGenerator, TicketNumberGenerator>();
+        services.AddScoped<IDashboardRepository, DashboardRepository>();
+        services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ITicketQueryService, TicketQueryService>();
         services.AddScoped<ITicketCreationService, TicketCreationService>();
         services.AddScoped<ITicketAssignmentService, TicketAssignmentService>();
