@@ -3,6 +3,8 @@ using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 
@@ -14,15 +16,18 @@ public sealed class TicketAdministrationService
     private readonly ITicketRepository _ticketRepository;
     private readonly IUserRepository _userRepository;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationWriter _notificationWriter;
 
     public TicketAdministrationService(
         ITicketRepository ticketRepository,
         IUserRepository userRepository,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationWriter? notificationWriter = null)
     {
         _ticketRepository = ticketRepository;
         _userRepository = userRepository;
         _auditLogService = auditLogService;
+        _notificationWriter = notificationWriter ?? new NullNotificationWriter();
     }
 
     /// <summary>
@@ -108,6 +113,15 @@ public sealed class TicketAdministrationService
             {
                 Priority = ticket.Priority
             },
+            cancellationToken);
+
+        await _notificationWriter.AddAsync(
+            currentUserId,
+            GetTicketParticipants(ticket),
+            NotificationType.TicketPriorityChanged,
+            "Talep önceliği değiştirildi",
+            $"{ticket.TicketNumber} numaralı talebin önceliği değiştirildi.",
+            ticket.Id,
             cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
@@ -205,5 +219,15 @@ public sealed class TicketAdministrationService
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
+    }
+
+    private static IEnumerable<Guid> GetTicketParticipants(Ticket ticket)
+    {
+        yield return ticket.CreatedByUserId;
+
+        if (ticket.AssignedTechnicianId.HasValue)
+        {
+            yield return ticket.AssignedTechnicianId.Value;
+        }
     }
 }

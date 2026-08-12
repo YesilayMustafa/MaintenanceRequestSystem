@@ -140,6 +140,9 @@ public sealed class Ticket
     public ICollection<TicketAttachment> Attachments { get; private set; }
         = new List<TicketAttachment>();
 
+    public ICollection<Notification> Notifications { get; private set; }
+        = new List<Notification>();
+
     /// <summary>
     /// Açık bir talebi ilk kez teknik personele atar ve Open → Assigned geçmişini oluşturur.
     /// Application katmanı bu davranışı yalnızca Admin adına ve aktif Technician hedefi için çağırmalıdır;

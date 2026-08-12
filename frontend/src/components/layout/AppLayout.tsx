@@ -7,6 +7,7 @@ import {
 
 import { useAuth } from "../../auth/useAuth";
 import { AppNavigation } from "../AppNavigation";
+import { NotificationCenter } from "../../features/notifications/NotificationCenter";
 
 const pageTitles: Array<{
     path: string;
@@ -20,10 +21,11 @@ const pageTitles: Array<{
     { path: "/users", title: "Kullanıcı Yönetimi" },
     { path: "/audit-logs", title: "Sistem Kayıtları" },
     { path: "/profile", title: "Profil" },
+    { path: "/notifications", title: "Bildirimler" },
 ];
 
 export function AppLayout() {
-    const { user, logout } = useAuth();
+    const { user, token, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -58,6 +60,7 @@ export function AppLayout() {
                     </div>
 
                     <div className="user-menu">
+                        {token && <NotificationCenter token={token} />}
                         <div className="user-avatar" aria-hidden="true">
                             {getInitials(user?.fullName)}
                         </div>

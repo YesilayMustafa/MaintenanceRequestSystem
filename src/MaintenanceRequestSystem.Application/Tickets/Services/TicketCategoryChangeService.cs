@@ -4,6 +4,8 @@ using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 
@@ -16,17 +18,20 @@ public sealed class TicketCategoryChangeService
     private readonly ITicketCategoryRepository _categoryRepository;
     private readonly IUserRepository _userRepository;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationWriter _notificationWriter;
 
     public TicketCategoryChangeService(
         ITicketRepository ticketRepository,
         ITicketCategoryRepository categoryRepository,
         IUserRepository userRepository,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationWriter? notificationWriter = null)
     {
         _ticketRepository = ticketRepository;
         _categoryRepository = categoryRepository;
         _userRepository = userRepository;
         _auditLogService = auditLogService;
+        _notificationWriter = notificationWriter ?? new NullNotificationWriter();
     }
 
     public async Task<TicketDto> ChangeCategoryAsync(
@@ -114,6 +119,22 @@ public sealed class TicketCategoryChangeService
                 CategoryId = category.Id,
                 CategoryName = category.Name
             },
+            cancellationToken);
+
+        var recipients = new List<Guid> { ticket.CreatedByUserId };
+
+        if (ticket.AssignedTechnicianId.HasValue)
+        {
+            recipients.Add(ticket.AssignedTechnicianId.Value);
+        }
+
+        await _notificationWriter.AddAsync(
+            currentUserId,
+            recipients,
+            NotificationType.TicketCategoryChanged,
+            "Talep kategorisi değiştirildi",
+            $"{ticket.TicketNumber} numaralı talebin kategorisi değiştirildi.",
+            ticket.Id,
             cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(cancellationToken);

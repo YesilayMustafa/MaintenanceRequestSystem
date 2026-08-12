@@ -3,6 +3,8 @@ using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 
@@ -13,15 +15,18 @@ public sealed class TicketCompletionService : ITicketCompletionService
     private readonly ITicketRepository _ticketRepository;
     private readonly IUserRepository _userRepository;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationWriter _notificationWriter;
 
     public TicketCompletionService(
         ITicketRepository ticketRepository,
         IUserRepository userRepository,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationWriter? notificationWriter = null)
     {
         _ticketRepository = ticketRepository;
         _userRepository = userRepository;
         _auditLogService = auditLogService;
+        _notificationWriter = notificationWriter ?? new NullNotificationWriter();
     }
 
     /// <summary>
@@ -89,6 +94,14 @@ public sealed class TicketCompletionService : ITicketCompletionService
 
         ticket.Close(
             currentUserId);
+
+        await AddAssignedTechnicianNotificationAsync(
+            ticket,
+            currentUserId,
+            NotificationType.TicketClosed,
+            "Talep kapatıldı",
+            $"{ticket.TicketNumber} numaralı talep kapatıldı.",
+            cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
@@ -164,6 +177,14 @@ public sealed class TicketCompletionService : ITicketCompletionService
         ticket.Reopen(
             request.Reason,
             currentUserId);
+
+        await AddAssignedTechnicianNotificationAsync(
+            ticket,
+            currentUserId,
+            NotificationType.TicketReopened,
+            "Talep yeniden açıldı",
+            $"{ticket.TicketNumber} numaralı talep yeniden açıldı.",
+            cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
@@ -265,9 +286,37 @@ public sealed class TicketCompletionService : ITicketCompletionService
             },
             cancellationToken);
 
+        await AddAssignedTechnicianNotificationAsync(
+            ticket,
+            currentUserId,
+            NotificationType.TicketCancelled,
+            "Talep iptal edildi",
+            $"{ticket.TicketNumber} numaralı talep iptal edildi.",
+            cancellationToken);
+
         await _ticketRepository.SaveChangesAsync(
             cancellationToken);
 
         return TicketDtoMapper.MapToDto(ticket);
+    }
+
+    private Task AddAssignedTechnicianNotificationAsync(
+        Ticket ticket,
+        Guid actorUserId,
+        NotificationType type,
+        string title,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        return _notificationWriter.AddAsync(
+            actorUserId,
+            ticket.AssignedTechnicianId.HasValue
+                ? [ticket.AssignedTechnicianId.Value]
+                : [],
+            type,
+            title,
+            message,
+            ticket.Id,
+            cancellationToken);
     }
 }

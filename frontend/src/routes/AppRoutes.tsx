@@ -16,6 +16,8 @@ import { CreateTicketPage } from "../pages/CreateTicketPage";
 import { TicketsPage } from "../pages/TicketsPage";
 import { TicketDetailsPage } from "../pages/TicketDetailsPage";
 import { UsersPage } from "../pages/UsersPage";
+import { NotificationsPage } from "../pages/NotificationsPage";
+import { AssetMaintenanceHistoryPage } from "../pages/AssetMaintenanceHistoryPage";
 
 const adminRoles = ["Admin"] as const;
 
@@ -53,6 +55,11 @@ export function AppRoutes() {
             >
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/assets" element={<AssetsPage />} />
+                <Route
+                    path="/assets/:id/history"
+                    element={<AssetMaintenanceHistoryPage />}
+                />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route
