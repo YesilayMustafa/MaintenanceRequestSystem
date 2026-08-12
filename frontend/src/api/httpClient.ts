@@ -37,11 +37,28 @@ export async function apiRequest<T>(
     path: string,
     options: RequestOptions = {}
 ): Promise<T> {
+    const response = await apiResponse(path, options);
+
+    if (response.status === 204) {
+        return undefined as T;
+    }
+
+    return (await response.json()) as T;
+}
+
+export async function apiResponse(
+    path: string,
+    options: RequestOptions = {}
+): Promise<Response> {
     const { token, headers, ...requestOptions } = options;
 
     const requestHeaders = new Headers(headers);
 
-    if (!requestHeaders.has("Content-Type") && requestOptions.body) {
+    if (
+        !requestHeaders.has("Content-Type") &&
+        requestOptions.body &&
+        !(requestOptions.body instanceof FormData)
+    ) {
         requestHeaders.set("Content-Type", "application/json");
     }
 
@@ -76,11 +93,7 @@ export async function apiRequest<T>(
         );
     }
 
-    if (response.status === 204) {
-        return undefined as T;
-    }
-
-    return (await response.json()) as T;
+    return response;
 }
 
 function getDefaultErrorMessage(status: number): string {

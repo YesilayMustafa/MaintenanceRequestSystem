@@ -1065,6 +1065,87 @@ button:hover:not(:disabled) {
     padding-top: 20px;
 }
 
+.attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.attachment-item {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface-muted);
+    padding: 13px 14px;
+}
+
+.attachment-details {
+    min-width: 0;
+}
+
+.attachment-name {
+    display: block;
+    overflow: hidden;
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+    text-overflow: ellipsis;
+}
+
+.attachment-meta {
+    display: block;
+    margin-top: 5px;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+
+.attachment-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 8px;
+}
+
+.attachment-upload {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 20px;
+}
+
+.attachment-upload label {
+    width: 100%;
+}
+
+.attachment-upload input[type="file"] {
+    min-width: 0;
+    flex: 1 1 280px;
+}
+
+.selected-file,
+.attachment-upload-note {
+    width: 100%;
+    margin-bottom: 0;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.attachment-upload-note {
+    margin-top: 18px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 18px;
+}
+
 .login-page {
     display: grid;
     min-height: 100vh;
@@ -1259,9 +1340,16 @@ pre {
     }
 
     .pagination,
-    .comment-meta {
+    .comment-meta,
+    .attachment-item {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .attachment-actions,
+    .attachment-actions .button,
+    .attachment-upload .button {
+        width: 100%;
     }
 
     .pagination-actions,

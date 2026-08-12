@@ -24,6 +24,7 @@ import {
     TicketStatusBadge,
 } from "../components/TicketBadges";
 import { TicketActions } from "../features/tickets/TicketActions";
+import { TicketAttachments } from "../features/tickets/TicketAttachments";
 
 import type { TicketCommentDto } from "../types/comments";
 import type {
@@ -246,6 +247,15 @@ export function TicketDetailsPage() {
                             )}
                         </dl>
                     </section>
+
+                    {user && token && (
+                        <TicketAttachments
+                            ticketId={ticket.id}
+                            ticketStatus={ticket.status}
+                            token={token}
+                            user={user}
+                        />
+                    )}
 
                     <section className="card" aria-labelledby="history-title">
                         <div className="card-header">
