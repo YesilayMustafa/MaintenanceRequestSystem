@@ -107,6 +107,9 @@ public sealed class User
     public ICollection<TicketHistory> TicketHistories { get; private set; }
         = new List<TicketHistory>();
 
+    public ICollection<TicketAttachment> UploadedAttachments { get; private set; }
+        = new List<TicketAttachment>();
+
     public ICollection<AuditLog> AuditLogs { get; private set; }
         = new List<AuditLog>();
 
