@@ -9,6 +9,75 @@ namespace MaintenanceRequestSystem.UnitTests.Application.Tickets;
 public sealed partial class TicketServiceTests
 {
     [Fact]
+    public async Task GetPagedAsync_WithTooLongSearch_ThrowsValidationException()
+    {
+        var service = new TicketQueryService(
+            new FakeTicketRepository(),
+            new FakeUserRepository());
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.GetPagedAsync(
+                Guid.NewGuid(),
+                UserRole.Admin,
+                new TicketListQuery
+                {
+                    Search = new string('a', TicketListQuery.MaxSearchLength + 1)
+                }));
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithNonUtcDate_ThrowsValidationException()
+    {
+        var service = new TicketQueryService(
+            new FakeTicketRepository(),
+            new FakeUserRepository());
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.GetPagedAsync(
+                Guid.NewGuid(),
+                UserRole.Admin,
+                new TicketListQuery
+                {
+                    CreatedFrom = DateTime.SpecifyKind(
+                        DateTime.UtcNow,
+                        DateTimeKind.Unspecified)
+                }));
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithInvalidDateRange_ThrowsValidationException()
+    {
+        var service = new TicketQueryService(
+            new FakeTicketRepository(),
+            new FakeUserRepository());
+        var now = DateTime.UtcNow;
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.GetPagedAsync(
+                Guid.NewGuid(),
+                UserRole.Admin,
+                new TicketListQuery
+                {
+                    CreatedFrom = now,
+                    CreatedTo = now.AddMinutes(-1)
+                }));
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_WithEmptyAdvancedFilterId_ThrowsValidationException()
+    {
+        var service = new TicketQueryService(
+            new FakeTicketRepository(),
+            new FakeUserRepository());
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.GetPagedAsync(
+                Guid.NewGuid(),
+                UserRole.Admin,
+                new TicketListQuery { CategoryId = Guid.Empty }));
+    }
+
+    [Fact]
     public async Task CreateAsync_WithValidRequest_AddsAndSavesOpenTicket()
     {
         var user = CreateUser();
@@ -28,12 +97,14 @@ public sealed partial class TicketServiceTests
                 {
                     UserById = user
                 },
-                new FakeTicketNumberGenerator());
+                new FakeTicketNumberGenerator(),
+                new FakeTicketCategoryRepository());
 
         var request =
             new CreateTicketRequest
             {
                 AssetId = asset.Id,
+                CategoryId = Guid.NewGuid(),
                 Title = "  Bilgisayar açılmıyor  ",
                 Description =
                     "  Güç düğmesine basıldığında cihaz açılmıyor.  ",
@@ -68,6 +139,7 @@ public sealed partial class TicketServiceTests
             createdTicket.Priority);
 
         Assert.Equal(asset.Id, createdTicket.AssetId);
+        Assert.Equal(request.CategoryId, createdTicket.CategoryId);
         Assert.Equal(user.Id, createdTicket.CreatedByUserId);
         Assert.Null(createdTicket.AssignedTechnicianId);
 
@@ -82,6 +154,42 @@ public sealed partial class TicketServiceTests
         Assert.Equal("Open", result.Status);
         Assert.Equal("High", result.Priority);
         Assert.Equal("REQ-2026-000001", result.TicketNumber);
+        Assert.Equal(request.CategoryId, result.CategoryId);
+        Assert.Equal("Diğer", result.CategoryName);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithMissingCategory_ThrowsKeyNotFoundException()
+    {
+        var user = CreateUser();
+        var asset = CreateAsset();
+        var service = new TicketCreationService(
+            new FakeTicketRepository(),
+            new FakeAssetRepository { AssetById = asset },
+            new FakeUserRepository { UserById = user },
+            new FakeTicketNumberGenerator(),
+            new FakeTicketCategoryRepository { CategoryById = null });
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            service.CreateAsync(user.Id, CreateRequest(asset.Id)));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithInactiveCategory_ThrowsValidationException()
+    {
+        var user = CreateUser();
+        var asset = CreateAsset();
+        var category = new TicketCategory("Pasif");
+        category.Deactivate();
+        var service = new TicketCreationService(
+            new FakeTicketRepository(),
+            new FakeAssetRepository { AssetById = asset },
+            new FakeUserRepository { UserById = user },
+            new FakeTicketNumberGenerator(),
+            new FakeTicketCategoryRepository { CategoryById = category });
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.CreateAsync(user.Id, CreateRequest(asset.Id)));
     }
 
     [Fact]
@@ -173,7 +281,8 @@ new TicketCreationService(
                 new FakeTicketRepository(),
                 new FakeAssetRepository(),
                 new FakeUserRepository(),
-                new FakeTicketNumberGenerator());
+                new FakeTicketNumberGenerator(),
+                new FakeTicketCategoryRepository());
 
         var request =
             new CreateTicketRequest
@@ -204,7 +313,8 @@ new TicketCreationService(
                 {
                     UserById = null
                 },
-                new FakeTicketNumberGenerator());
+                new FakeTicketNumberGenerator(),
+                new FakeTicketCategoryRepository());
 
         var request =
             CreateRequest(
@@ -236,7 +346,8 @@ new TicketCreationService(
                 {
                     UserById = user
                 },
-                new FakeTicketNumberGenerator());
+                new FakeTicketNumberGenerator(),
+                new FakeTicketCategoryRepository());
 
         await Assert.ThrowsAsync<ForbiddenException>(
             () => service.CreateAsync(
@@ -269,7 +380,8 @@ new TicketCreationService(
                 {
                     UserById = user
                 },
-                new FakeTicketNumberGenerator());
+                new FakeTicketNumberGenerator(),
+                new FakeTicketCategoryRepository());
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.CreateAsync(
@@ -305,7 +417,8 @@ new TicketCreationService(
                 {
                     UserById = user
                 },
-                new FakeTicketNumberGenerator());
+                new FakeTicketNumberGenerator(),
+                new FakeTicketCategoryRepository());
 
         await Assert.ThrowsAsync<RequestValidationException>(
             () => service.CreateAsync(

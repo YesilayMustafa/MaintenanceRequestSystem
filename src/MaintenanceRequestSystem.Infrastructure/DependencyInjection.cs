@@ -23,6 +23,8 @@ using MaintenanceRequestSystem.Application.Authentication.Models;
 using MaintenanceRequestSystem.Infrastructure.Email;
 using MaintenanceRequestSystem.Application.Dashboard.Interfaces;
 using MaintenanceRequestSystem.Application.Dashboard.Services;
+using MaintenanceRequestSystem.Application.Categories.Interfaces;
+using MaintenanceRequestSystem.Application.Categories.Services;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -49,12 +51,17 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAssetRepository, AssetRepository>();
         services.AddScoped<IAssetService, AssetService>();
+        services.AddScoped<ITicketCategoryRepository, TicketCategoryRepository>();
+        services.AddScoped<ITicketCategoryService, TicketCategoryService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<ITicketNumberGenerator, TicketNumberGenerator>();
         services.AddScoped<IDashboardRepository, DashboardRepository>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ITicketQueryService, TicketQueryService>();
         services.AddScoped<ITicketCreationService, TicketCreationService>();
+        services.AddScoped<
+            ITicketCategoryChangeService,
+            TicketCategoryChangeService>();
         services.AddScoped<ITicketAssignmentService, TicketAssignmentService>();
         services.AddScoped<
             ITicketTechnicianLifecycleService,

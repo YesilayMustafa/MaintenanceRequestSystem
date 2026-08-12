@@ -30,6 +30,25 @@ public sealed class Ticket
         string title,
         string description,
         TicketPriority priority)
+        : this(
+            ticketNumber,
+            assetId,
+            TicketCategory.OtherId,
+            createdByUserId,
+            title,
+            description,
+            priority)
+    {
+    }
+
+    public Ticket(
+        string ticketNumber,
+        Guid assetId,
+        Guid categoryId,
+        Guid createdByUserId,
+        string title,
+        string description,
+        TicketPriority priority)
     {
         var normalizedTitle =
             NormalizeTitle(title);
@@ -41,12 +60,14 @@ public sealed class Ticket
             TicketNumberValue.Normalize(ticketNumber);
 
         EnsureValidAssetId(assetId);
+        EnsureValidCategoryId(categoryId);
         EnsureValidUserId(createdByUserId);
         EnsureValidPriority(priority);
 
         Id = Guid.NewGuid();
         TicketNumber = normalizedTicketNumber;
         AssetId = assetId;
+        CategoryId = categoryId;
         CreatedByUserId = createdByUserId;
         Title = normalizedTitle;
         Description = normalizedDescription;
@@ -70,6 +91,10 @@ public sealed class Ticket
     public Guid AssetId { get; private set; }
 
     public Asset Asset { get; private set; } = null!;
+
+    public Guid CategoryId { get; private set; }
+
+    public TicketCategory Category { get; private set; } = null!;
 
     public Guid CreatedByUserId { get; private set; }
 
@@ -495,6 +520,41 @@ public sealed class Ticket
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void ChangeCategory(
+        Guid categoryId,
+        Guid performedByUserId,
+        string oldCategoryName,
+        string newCategoryName)
+    {
+        EnsureValidCategoryId(categoryId);
+        EnsureValidPerformedByUserId(performedByUserId);
+
+        if (CategoryId == categoryId)
+        {
+            return;
+        }
+
+        var normalizedOldName = NormalizeCategoryName(
+            oldCategoryName,
+            nameof(oldCategoryName));
+
+        var normalizedNewName = NormalizeCategoryName(
+            newCategoryName,
+            nameof(newCategoryName));
+
+        CategoryId = categoryId;
+        UpdatedAt = DateTime.UtcNow;
+
+        Histories.Add(
+            new TicketHistory(
+                Id,
+                performedByUserId,
+                Status,
+                Status,
+                $"Talep kategorisi '{normalizedOldName}' değerinden " +
+                $"'{normalizedNewName}' değerine değiştirildi."));
+    }
+
     /// <summary>
     /// Tamamlanmış veya iptal edilmiş talebi fiziksel olarak silmeden
     /// pasifleştirir ve silme bilgilerini kaydeder.
@@ -657,6 +717,30 @@ public sealed class Ticket
                 "Geçerli bir cihaz kimliği gereklidir.",
                 nameof(assetId));
         }
+    }
+
+    private static void EnsureValidCategoryId(Guid categoryId)
+    {
+        if (categoryId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Geçerli bir kategori kimliği gereklidir.",
+                nameof(categoryId));
+        }
+    }
+
+    private static string NormalizeCategoryName(
+        string categoryName,
+        string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(categoryName))
+        {
+            throw new ArgumentException(
+                "Kategori adı boş olamaz.",
+                parameterName);
+        }
+
+        return categoryName.Trim();
     }
 
     private static void EnsureValidUserId(

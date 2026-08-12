@@ -10,6 +10,8 @@ public sealed record TicketDto(
     Guid AssetId,
     string AssetName,
     string AssetSerialNumber,
+    Guid CategoryId,
+    string CategoryName,
     Guid CreatedByUserId,
     string CreatedByFullName,
     Guid? AssignedTechnicianId,

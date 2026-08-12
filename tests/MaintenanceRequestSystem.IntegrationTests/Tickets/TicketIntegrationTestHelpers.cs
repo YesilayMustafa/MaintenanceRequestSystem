@@ -4,6 +4,7 @@ using MaintenanceRequestSystem.Application.Common.Models;
 using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Users.Dtos;
+using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.Infrastructure.Authentication;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
@@ -196,6 +197,7 @@ public sealed partial class TicketManagementIntegrationTests
             new CreateTicketRequest
             {
                 AssetId = assetId,
+                CategoryId = TicketCategory.OtherId,
                 Title = title,
                 Description =
                     $"{title} için integration test açıklaması.",
@@ -438,6 +440,7 @@ public sealed partial class TicketManagementIntegrationTests
         return new CreateTicketRequest
         {
             AssetId = assetId,
+            CategoryId = TicketCategory.OtherId,
             Title = "Bilgisayar açılmıyor",
             Description =
                 "Güç düğmesine basıldığında cihaz açılmıyor.",

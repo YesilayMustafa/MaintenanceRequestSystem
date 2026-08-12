@@ -27,6 +27,7 @@ public sealed class TicketsController : ControllerBase
     private readonly ITicketTechnicianLifecycleService _ticketTechnicianLifecycleService;
     private readonly ITicketCompletionService _ticketCompletionService;
     private readonly ITicketAdministrationService _ticketAdministrationService;
+    private readonly ITicketCategoryChangeService _ticketCategoryChangeService;
 
     /// <summary>
     /// Controller'ı ticket use case sözleşmesiyle oluşturur.
@@ -37,7 +38,8 @@ public sealed class TicketsController : ControllerBase
         ITicketAssignmentService ticketAssignmentService,
         ITicketTechnicianLifecycleService ticketTechnicianLifecycleService,
         ITicketCompletionService ticketCompletionService,
-        ITicketAdministrationService ticketAdministrationService)
+        ITicketAdministrationService ticketAdministrationService,
+        ITicketCategoryChangeService ticketCategoryChangeService)
     {
         _ticketQueryService = ticketQueryService;
         _ticketCreationService = ticketCreationService;
@@ -45,6 +47,7 @@ public sealed class TicketsController : ControllerBase
         _ticketTechnicianLifecycleService = ticketTechnicianLifecycleService;
         _ticketCompletionService = ticketCompletionService;
         _ticketAdministrationService = ticketAdministrationService;
+        _ticketCategoryChangeService = ticketCategoryChangeService;
     }
 
     /// <summary>
@@ -420,6 +423,28 @@ public sealed class TicketsController : ControllerBase
                 role,
                 request,
                 cancellationToken);
+
+        return Ok(ticket);
+    }
+
+    [HttpPatch("{id:guid}/category")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult<TicketDto>> ChangeCategory(
+        Guid id,
+        ChangeTicketCategoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        var ticket = await _ticketCategoryChangeService.ChangeCategoryAsync(
+            id,
+            userId,
+            role,
+            request,
+            cancellationToken);
 
         return Ok(ticket);
     }

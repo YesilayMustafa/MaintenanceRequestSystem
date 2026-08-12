@@ -7,6 +7,9 @@ using MaintenanceRequestSystem.Domain.Enums;
 namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 public sealed class TicketRepository : ITicketRepository
 {
+    private const string InMemoryProvider =
+        "Microsoft.EntityFrameworkCore.InMemory";
+
     private readonly ApplicationDbContext _context;
 
     public TicketRepository(ApplicationDbContext context)
@@ -24,6 +27,7 @@ public sealed class TicketRepository : ITicketRepository
             _context.Tickets
                 .AsNoTracking()
                 .Include(ticket => ticket.Asset)
+                .Include(ticket => ticket.Category)
                 .Include(ticket => ticket.CreatedByUser)
                 .Include(ticket => ticket.AssignedTechnician);
 
@@ -66,15 +70,93 @@ public sealed class TicketRepository : ITicketRepository
                     ticket.TicketNumber.StartsWith(ticketNumberPrefix));
         }
 
-        var totalCount =
-            await ticketQuery.CountAsync(
-                cancellationToken);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+
+            if (string.Equals(
+                    _context.Database.ProviderName,
+                    InMemoryProvider,
+                    StringComparison.Ordinal))
+            {
+                ticketQuery = ticketQuery.Where(ticket =>
+                    ticket.TicketNumber.Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    ticket.Title.Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    ticket.Description.Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                var pattern = $"%{EscapeLikePattern(search)}%";
+
+                ticketQuery = ticketQuery.Where(ticket =>
+                    EF.Functions.ILike(
+                        ticket.TicketNumber,
+                        pattern,
+                        "\\") ||
+                    EF.Functions.ILike(
+                        ticket.Title,
+                        pattern,
+                        "\\") ||
+                    EF.Functions.ILike(
+                        ticket.Description,
+                        pattern,
+                        "\\"));
+            }
+        }
+
+        if (query.CategoryId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.CategoryId == query.CategoryId.Value);
+        }
+
+        if (query.CreatedByUserId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.CreatedByUserId == query.CreatedByUserId.Value);
+        }
+
+        if (query.AssignedTechnicianId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.AssignedTechnicianId ==
+                query.AssignedTechnicianId.Value);
+        }
+
+        if (query.DepartmentId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.CreatedByUser.DepartmentId ==
+                query.DepartmentId.Value);
+        }
+
+        if (query.CreatedFrom.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.CreatedAt >= query.CreatedFrom.Value);
+        }
+
+        if (query.CreatedTo.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.CreatedAt <= query.CreatedTo.Value);
+        }
 
         ticketQuery =
             ApplySorting(
                 ticketQuery,
                 query.SortBy,
                 query.SortDescending);
+
+        var totalCount =
+            await ticketQuery.CountAsync(
+                cancellationToken);
 
         var offset =
             ((long)query.PageNumber - 1L) *
@@ -98,6 +180,7 @@ public sealed class TicketRepository : ITicketRepository
     {
         return await _context.Tickets
             .Include(ticket => ticket.Asset)
+            .Include(ticket => ticket.Category)
             .Include(ticket => ticket.CreatedByUser)
             .Include(ticket => ticket.AssignedTechnician)
             .FirstOrDefaultAsync(
@@ -147,6 +230,22 @@ public sealed class TicketRepository : ITicketRepository
 
         return normalizedSortBy switch
         {
+            "ticketnumber" when sortDescending =>
+                query.OrderByDescending(ticket => ticket.TicketNumber)
+                    .ThenBy(ticket => ticket.Id),
+
+            "ticketnumber" =>
+                query.OrderBy(ticket => ticket.TicketNumber)
+                    .ThenBy(ticket => ticket.Id),
+
+            "category" when sortDescending =>
+                query.OrderByDescending(ticket => ticket.Category.Name)
+                    .ThenBy(ticket => ticket.Id),
+
+            "category" =>
+                query.OrderBy(ticket => ticket.Category.Name)
+                    .ThenBy(ticket => ticket.Id),
+
             "title" when sortDescending =>
                 query.OrderByDescending(
                     ticket => ticket.Title)
@@ -223,5 +322,13 @@ public sealed class TicketRepository : ITicketRepository
                     ticket => ticket.CreatedAt)
                 .ThenBy(ticket => ticket.Id)
         };
+    }
+
+    private static string EscapeLikePattern(string value)
+    {
+        return value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
     }
 }
