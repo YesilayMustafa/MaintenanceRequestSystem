@@ -3,6 +3,7 @@ import { apiRequest } from "./httpClient";
 import type { PagedResult } from "../types/pagination";
 import type {
     AssignTicketRequest,
+    ChangeTicketCategoryRequest,
     ChangeTicketPriorityRequest,
     CreateTicketRequest,
     PutTicketOnHoldRequest,
@@ -67,6 +68,37 @@ export function getTickets(
 
     if (query.ticketNumber) {
         searchParams.set("ticketNumber", query.ticketNumber);
+    }
+
+    if (query.search) {
+        searchParams.set("search", query.search);
+    }
+
+    if (query.categoryId) {
+        searchParams.set("categoryId", query.categoryId);
+    }
+
+    if (query.createdByUserId) {
+        searchParams.set("createdByUserId", query.createdByUserId);
+    }
+
+    if (query.assignedTechnicianId) {
+        searchParams.set(
+            "assignedTechnicianId",
+            query.assignedTechnicianId
+        );
+    }
+
+    if (query.departmentId) {
+        searchParams.set("departmentId", query.departmentId);
+    }
+
+    if (query.createdFrom) {
+        searchParams.set("createdFrom", query.createdFrom);
+    }
+
+    if (query.createdTo) {
+        searchParams.set("createdTo", query.createdTo);
     }
 
     return apiRequest<PagedResult<TicketDto>>(
@@ -179,6 +211,14 @@ export function changeTicketPriority(
     request: ChangeTicketPriorityRequest
 ): Promise<TicketDto> {
     return patchTicket(token, id, "priority", request);
+}
+
+export function changeTicketCategory(
+    token: string,
+    id: string,
+    request: ChangeTicketCategoryRequest
+): Promise<TicketDto> {
+    return patchTicket(token, id, "category", request);
 }
 
 export function softDeleteTicket(

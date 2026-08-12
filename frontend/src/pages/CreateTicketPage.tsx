@@ -6,11 +6,13 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import { getAssets } from "../api/assetsApi";
+import { getCategories } from "../api/categoriesApi";
 import { ApiError } from "../api/httpClient";
 import { createTicket } from "../api/ticketsApi";
 import { useAuth } from "../auth/useAuth";
 
 import type { AssetDto } from "../types/assets";
+import type { TicketCategoryDto } from "../types/categories";
 import type { TicketPriorityValue } from "../types/tickets";
 
 const maxTitleLength = 200;
@@ -21,12 +23,16 @@ export function CreateTicketPage() {
     const { token } = useAuth();
 
     const [assets, setAssets] = useState<AssetDto[]>([]);
+    const [categories, setCategories] = useState<TicketCategoryDto[]>([]);
     const [assetId, setAssetId] = useState("");
+    const [categoryId, setCategoryId] = useState("");
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState<TicketPriorityValue>(2);
     const [isAssetsLoading, setIsAssetsLoading] = useState(true);
     const [assetError, setAssetError] = useState<string | null>(null);
+    const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+    const [categoryError, setCategoryError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -77,6 +83,48 @@ export function CreateTicketPage() {
         };
     }, [token]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadCategories() {
+            if (!token) {
+                if (!cancelled) {
+                    setIsCategoriesLoading(false);
+                }
+
+                return;
+            }
+
+            try {
+                setIsCategoriesLoading(true);
+                setCategoryError(null);
+
+                const result = await getCategories(token);
+
+                if (!cancelled) {
+                    setCategories(result);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setCategoryError(getErrorMessage(
+                        error,
+                        "Kategoriler yüklenemedi."
+                    ));
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsCategoriesLoading(false);
+                }
+            }
+        }
+
+        loadCategories();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [token]);
+
     const activeAssets =
         assets.filter((asset) => asset.isActive);
 
@@ -94,6 +142,11 @@ export function CreateTicketPage() {
 
         if (!assetId) {
             setSubmitError("Bir cihaz seçmelisiniz.");
+            return;
+        }
+
+        if (!categoryId) {
+            setSubmitError("Bir kategori seçmelisiniz.");
             return;
         }
 
@@ -121,6 +174,7 @@ export function CreateTicketPage() {
                     token,
                     {
                         assetId,
+                        categoryId,
                         title: normalizedTitle,
                         description: normalizedDescription,
                         priority,
@@ -165,10 +219,26 @@ export function CreateTicketPage() {
                 <p className="error-state" role="alert">{assetError}</p>
             )}
 
+            {isCategoriesLoading && (
+                <p className="loading-state">Kategoriler yükleniyor...</p>
+            )}
+
+            {categoryError && (
+                <p className="error-state" role="alert">{categoryError}</p>
+            )}
+
             {!isAssetsLoading &&
                 !assetError &&
                 activeAssets.length === 0 && (
                     <p className="empty-state">Aktif cihaz bulunamadı.</p>
+                )}
+
+            {!isCategoriesLoading &&
+                !categoryError &&
+                categories.length === 0 && (
+                    <p className="empty-state">
+                        Aktif kategori bulunamadı. Talep oluşturulamaz.
+                    </p>
                 )}
 
             {!isAssetsLoading && !assetError && (
@@ -203,6 +273,35 @@ export function CreateTicketPage() {
                                     {asset.serialNumber}
                                     {" - "}
                                     {asset.departmentName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group form-group-full">
+                        <label htmlFor="category-id">Kategori</label>
+
+                        <select
+                            id="category-id"
+                            value={categoryId}
+                            onChange={(event) =>
+                                setCategoryId(event.target.value)
+                            }
+                            disabled={
+                                isSubmitting ||
+                                isCategoriesLoading ||
+                                Boolean(categoryError) ||
+                                categories.length === 0
+                            }
+                            required
+                        >
+                            <option value="">Kategori seçin</option>
+                            {categories.map((category) => (
+                                <option
+                                    key={category.id}
+                                    value={category.id}
+                                >
+                                    {category.name}
                                 </option>
                             ))}
                         </select>
@@ -276,7 +375,10 @@ export function CreateTicketPage() {
                             className="button button-primary"
                             disabled={
                                 isSubmitting ||
-                                activeAssets.length === 0
+                                activeAssets.length === 0 ||
+                                isCategoriesLoading ||
+                                Boolean(categoryError) ||
+                                categories.length === 0
                             }
                         >
                             {isSubmitting
@@ -300,4 +402,13 @@ function isTicketPriorityValue(
         value === 2 ||
         value === 3 ||
         value === 4;
+}
+
+function getErrorMessage(
+    error: unknown,
+    fallbackMessage: string
+): string {
+    return error instanceof ApiError
+        ? error.message
+        : fallbackMessage;
 }

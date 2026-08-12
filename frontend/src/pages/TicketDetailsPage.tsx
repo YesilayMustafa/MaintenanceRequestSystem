@@ -197,6 +197,10 @@ export function TicketDetailsPage() {
                                 <dd>{ticket.assetName}</dd>
                             </div>
                             <div className="definition-item">
+                                <dt>Kategori</dt>
+                                <dd>{ticket.categoryName}</dd>
+                            </div>
+                            <div className="definition-item">
                                 <dt>Seri Numarası</dt>
                                 <dd>{ticket.assetSerialNumber}</dd>
                             </div>

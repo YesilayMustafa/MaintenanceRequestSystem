@@ -5,6 +5,7 @@ using MaintenanceRequestSystem.Application.TicketComments.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Infrastructure.Authentication;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -448,6 +449,7 @@ public sealed class TicketCommentIntegrationTests
                 new CreateTicketRequest
                 {
                     AssetId = assetId,
+                    CategoryId = TicketCategory.OtherId,
                     Title = "Yorum Test Talebi",
                     Description =
                         "Yorum integration testleri için oluşturuldu.",

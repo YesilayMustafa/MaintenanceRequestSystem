@@ -8,6 +8,7 @@ internal static class TicketDtoMapper
     internal static TicketDto MapToDto(
         Ticket ticket,
         Asset? asset = null,
+        TicketCategory? category = null,
         User? createdByUser = null,
         User? assignedTechnician = null)
     {
@@ -17,6 +18,9 @@ internal static class TicketDtoMapper
     ticket.AssignedTechnician;
         var ticketAsset =
             asset ?? ticket.Asset;
+
+        var ticketCategory =
+            category ?? ticket.Category;
 
         var ticketCreator =
             createdByUser ?? ticket.CreatedByUser;
@@ -31,6 +35,8 @@ internal static class TicketDtoMapper
             ticket.AssetId,
             ticketAsset.Name,
             ticketAsset.SerialNumber,
+            ticket.CategoryId,
+            ticketCategory?.Name ?? string.Empty,
             ticket.CreatedByUserId,
             ticketCreator.FullName,
             ticket.AssignedTechnicianId,

@@ -1,5 +1,6 @@
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
 using MaintenanceRequestSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +72,7 @@ public sealed partial class TicketManagementIntegrationTests
                     new CreateTicketRequest
                     {
                         AssetId = asset.Id,
+                        CategoryId = TicketCategory.OtherId,
                         Title = $"Eşzamanlı talep {index}",
                         Description = "Paralel numara üretimi doğrulaması.",
                         Priority = TicketPriority.Medium

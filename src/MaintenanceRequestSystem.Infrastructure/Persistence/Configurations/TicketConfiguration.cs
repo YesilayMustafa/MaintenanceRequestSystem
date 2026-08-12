@@ -55,6 +55,10 @@ public sealed class TicketConfiguration
             .HasColumnName("asset_id")
             .IsRequired();
 
+        builder.Property(ticket => ticket.CategoryId)
+            .HasColumnName("category_id")
+            .IsRequired();
+
         builder.Property(ticket => ticket.CreatedByUserId)
             .HasColumnName("created_by_user_id")
             .IsRequired();
@@ -91,6 +95,8 @@ public sealed class TicketConfiguration
 
         builder.HasIndex(ticket => ticket.AssetId);
 
+        builder.HasIndex(ticket => ticket.CategoryId);
+
         builder.HasIndex(ticket => ticket.CreatedByUserId);
 
         builder.HasIndex(ticket => ticket.AssignedTechnicianId);
@@ -98,6 +104,11 @@ public sealed class TicketConfiguration
         builder.HasOne(ticket => ticket.Asset)
             .WithMany(asset => asset.Tickets)
             .HasForeignKey(ticket => ticket.AssetId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(ticket => ticket.Category)
+            .WithMany(category => category.Tickets)
+            .HasForeignKey(ticket => ticket.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(ticket => ticket.CreatedByUser)

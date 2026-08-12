@@ -15,6 +15,7 @@ const pageTitles: Array<{
     { path: "/dashboard", title: "Genel Bakış" },
     { path: "/tickets", title: "Talep Yönetimi" },
     { path: "/assets", title: "Cihaz Yönetimi" },
+    { path: "/categories", title: "Kategori Yönetimi" },
     { path: "/departments", title: "Departman Yönetimi" },
     { path: "/users", title: "Kullanıcı Yönetimi" },
     { path: "/audit-logs", title: "Sistem Kayıtları" },

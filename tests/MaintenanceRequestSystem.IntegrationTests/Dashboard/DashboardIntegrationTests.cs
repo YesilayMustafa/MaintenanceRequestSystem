@@ -5,6 +5,7 @@ using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
 using System.Net;
 using System.Net.Http.Headers;
@@ -234,6 +235,7 @@ public sealed class DashboardIntegrationTests
             new CreateTicketRequest
             {
                 AssetId = assetId,
+                CategoryId = TicketCategory.OtherId,
                 Title = title,
                 Description = $"{title} açıklaması",
                 Priority = priority

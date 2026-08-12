@@ -2,6 +2,7 @@
 using MaintenanceRequestSystem.Application.AuditLogs.Dtos;
 using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
 using MaintenanceRequestSystem.Application.AuditLogs.Services;
+using MaintenanceRequestSystem.Application.Categories.Interfaces;
 using MaintenanceRequestSystem.Application.Common.Models;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
@@ -22,6 +23,7 @@ public sealed partial class TicketServiceTests
         return new CreateTicketRequest
         {
             AssetId = assetId,
+            CategoryId = Guid.NewGuid(),
             Title = "Bilgisayar açılmıyor",
             Description = "Cihaz açılmıyor.",
             Priority = TicketPriority.High
@@ -266,6 +268,56 @@ public sealed partial class TicketServiceTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(TicketNumber);
+        }
+    }
+
+    private sealed class FakeTicketCategoryRepository
+        : ITicketCategoryRepository
+    {
+        public TicketCategory? CategoryById { get; init; } =
+            new("Diğer");
+
+        public Task<IReadOnlyList<TicketCategory>> GetAllAsync(
+            bool includeInactive,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<TicketCategory> categories =
+                CategoryById is null ? [] : [CategoryById];
+            return Task.FromResult(categories);
+        }
+
+        public Task<TicketCategory?> GetByIdAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(CategoryById);
+        }
+
+        public Task<bool> ExistsByNormalizedNameAsync(
+            string normalizedName,
+            Guid? excludedCategoryId = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
+
+        public Task<int> CountActiveAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(CategoryById?.IsActive == true ? 1 : 0);
+        }
+
+        public Task AddAsync(
+            TicketCategory category,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task SaveChangesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 

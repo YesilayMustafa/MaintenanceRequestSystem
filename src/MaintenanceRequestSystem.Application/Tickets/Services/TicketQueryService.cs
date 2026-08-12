@@ -211,12 +211,10 @@ public sealed class TicketQueryService : ITicketQueryService
     }
 
     private static void ValidateListQuery(
-    UserRole currentUserRole,
-    TicketListQuery query)
+        UserRole currentUserRole,
+        TicketListQuery query)
     {
-        if (!Enum.IsDefined(
-                typeof(UserRole),
-                currentUserRole))
+        if (!Enum.IsDefined(currentUserRole))
         {
             throw new ForbiddenException(
                 "Desteklenmeyen kullanıcı rolü.");
@@ -233,9 +231,8 @@ public sealed class TicketQueryService : ITicketQueryService
             throw new RequestValidationException(
                 "Sayfa boyutu 1 ile 100 arasında olmalıdır.");
         }
-        var offset =
-    ((long)query.PageNumber - 1L) *
-    query.PageSize;
+
+        var offset = ((long)query.PageNumber - 1L) * query.PageSize;
 
         if (offset > int.MaxValue)
         {
@@ -243,29 +240,31 @@ public sealed class TicketQueryService : ITicketQueryService
                 "İstenen sayfa numarası desteklenen sınırı aşıyor.");
         }
 
-        if (query.Status.HasValue &&
-    !Enum.IsDefined(
-        typeof(TicketStatus),
-        query.Status.Value))
+        if (query.Status.HasValue && !Enum.IsDefined(query.Status.Value))
         {
-            throw new RequestValidationException(
-                "Geçersiz talep durumu.");
-        }
-        if (query.Priority.HasValue &&
-            !Enum.IsDefined(
-                typeof(TicketPriority),
-                query.Priority.Value))
-        {
-            throw new RequestValidationException(
-                "Geçersiz talep önceliği.");
+            throw new RequestValidationException("Geçersiz talep durumu.");
         }
 
-        if (query.AssetId == Guid.Empty)
+        if (query.Priority.HasValue && !Enum.IsDefined(query.Priority.Value))
         {
-            throw new RequestValidationException(
-                "Geçerli bir cihaz kimliği gereklidir.");
+            throw new RequestValidationException("Geçersiz talep önceliği.");
         }
 
+        ValidateOptionalId(
+            query.AssetId,
+            "Geçerli bir cihaz kimliği gereklidir.");
+        ValidateOptionalId(
+            query.CategoryId,
+            "Geçerli bir kategori kimliği gereklidir.");
+        ValidateOptionalId(
+            query.CreatedByUserId,
+            "Geçerli bir talep sahibi kimliği gereklidir.");
+        ValidateOptionalId(
+            query.AssignedTechnicianId,
+            "Geçerli bir teknik personel kimliği gereklidir.");
+        ValidateOptionalId(
+            query.DepartmentId,
+            "Geçerli bir departman kimliği gereklidir.");
 
         if (query.TicketNumber is not null &&
             (string.IsNullOrWhiteSpace(query.TicketNumber) ||
@@ -275,23 +274,58 @@ public sealed class TicketQueryService : ITicketQueryService
                 "Talep numarası filtresi 1 ile 15 karakter arasında olmalıdır.");
         }
 
-        var allowedSortFields =
-            new[]
-            {
+        if (query.Search is not null &&
+            query.Search.Trim().Length > TicketListQuery.MaxSearchLength)
+        {
+            throw new RequestValidationException(
+                $"Arama metni en fazla {TicketListQuery.MaxSearchLength} karakter olabilir.");
+        }
+
+        ValidateUtcDate(query.CreatedFrom, "Başlangıç tarihi");
+        ValidateUtcDate(query.CreatedTo, "Bitiş tarihi");
+
+        if (query.CreatedFrom.HasValue &&
+            query.CreatedTo.HasValue &&
+            query.CreatedFrom.Value > query.CreatedTo.Value)
+        {
+            throw new RequestValidationException(
+                "Başlangıç tarihi bitiş tarihinden sonra olamaz.");
+        }
+
+        var allowedSortFields = new[]
+        {
             "createdat",
             "title",
             "priority",
-            "status"
-            };
+            "status",
+            "ticketnumber",
+            "category"
+        };
 
-        var normalizedSortBy =
-            query.SortBy.Trim().ToLowerInvariant();
+        var normalizedSortBy = query.SortBy.Trim().ToLowerInvariant();
 
-        if (!allowedSortFields.Contains(
-                normalizedSortBy))
+        if (!allowedSortFields.Contains(normalizedSortBy))
         {
             throw new RequestValidationException(
-                "Sıralama alanı createdAt, title, priority veya status olmalıdır.");
+                "Sıralama alanı createdAt, title, priority, status, " +
+                "ticketNumber veya category olmalıdır.");
+        }
+    }
+
+    private static void ValidateOptionalId(Guid? id, string message)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new RequestValidationException(message);
+        }
+    }
+
+    private static void ValidateUtcDate(DateTime? value, string displayName)
+    {
+        if (value.HasValue && value.Value.Kind != DateTimeKind.Utc)
+        {
+            throw new RequestValidationException(
+                $"{displayName} UTC formatında olmalıdır.");
         }
     }
 }

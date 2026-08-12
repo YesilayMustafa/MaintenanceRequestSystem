@@ -24,6 +24,9 @@ public sealed class ApplicationDbContext : DbContext
 
     public DbSet<Ticket> Tickets => Set<Ticket>();
 
+    public DbSet<TicketCategory> TicketCategories
+        => Set<TicketCategory>();
+
     public DbSet<TicketComment> TicketComments
         => Set<TicketComment>();
 

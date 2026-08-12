@@ -1,5 +1,6 @@
 ﻿using MaintenanceRequestSystem.Application.Assets.Interfaces;
 using MaintenanceRequestSystem.Application.Common.Exceptions;
+using MaintenanceRequestSystem.Application.Categories.Interfaces;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
@@ -13,17 +14,20 @@ public sealed class TicketCreationService : ITicketCreationService
     private readonly IAssetRepository _assetRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITicketNumberGenerator _ticketNumberGenerator;
+    private readonly ITicketCategoryRepository _categoryRepository;
 
     public TicketCreationService(
         ITicketRepository ticketRepository,
         IAssetRepository assetRepository,
         IUserRepository userRepository,
-        ITicketNumberGenerator ticketNumberGenerator)
+        ITicketNumberGenerator ticketNumberGenerator,
+        ITicketCategoryRepository categoryRepository)
     {
         _ticketRepository = ticketRepository;
         _assetRepository = assetRepository;
         _userRepository = userRepository;
         _ticketNumberGenerator = ticketNumberGenerator;
+        _categoryRepository = categoryRepository;
     }
 
     /// <summary>
@@ -43,6 +47,10 @@ public sealed class TicketCreationService : ITicketCreationService
         TicketServiceGuards.EnsureValidId(
     request.AssetId,
     "Geçerli bir cihaz kimliği gereklidir.");
+
+        TicketServiceGuards.EnsureValidId(
+            request.CategoryId,
+            "Geçerli bir kategori kimliği gereklidir.");
 
         var user =
             await _userRepository.GetByIdAsync(
@@ -78,6 +86,23 @@ public sealed class TicketCreationService : ITicketCreationService
                 "Pasif bir cihaz için yeni talep oluşturulamaz.");
         }
 
+        var category =
+            await _categoryRepository.GetByIdAsync(
+                request.CategoryId,
+                cancellationToken);
+
+        if (category is null)
+        {
+            throw new KeyNotFoundException(
+                "Seçilen kategori bulunamadı.");
+        }
+
+        if (!category.IsActive)
+        {
+            throw new RequestValidationException(
+                "Pasif bir kategoriyle yeni talep oluşturulamaz.");
+        }
+
         var ticketNumber =
             await _ticketNumberGenerator.NextAsync(
                 DateTime.UtcNow,
@@ -86,6 +111,7 @@ public sealed class TicketCreationService : ITicketCreationService
         var ticket = new Ticket(
             ticketNumber,
             request.AssetId,
+            request.CategoryId,
             createdByUserId,
             request.Title,
             request.Description,
@@ -101,6 +127,7 @@ public sealed class TicketCreationService : ITicketCreationService
         return TicketDtoMapper.MapToDto(
             ticket,
             asset,
+            category,
             user);
     }
 }

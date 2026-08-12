@@ -56,6 +56,40 @@ public static class DevelopmentDataSeederExtensions
                 "Development kullanıcı bilgileri bulunamadı.");
         }
 
+        var defaultCategories = new[]
+        {
+            new TicketCategory(
+                Guid.Parse("10000000-0000-0000-0000-000000000001"),
+                "Donanım"),
+            new TicketCategory(
+                Guid.Parse("10000000-0000-0000-0000-000000000002"),
+                "Yazılım"),
+            new TicketCategory(
+                Guid.Parse("10000000-0000-0000-0000-000000000003"),
+                "Ağ"),
+            new TicketCategory(
+                Guid.Parse("10000000-0000-0000-0000-000000000004"),
+                "Yazıcı"),
+            new TicketCategory(
+                Guid.Parse("10000000-0000-0000-0000-000000000005"),
+                "Hesap ve Erişim"),
+            new TicketCategory(
+                TicketCategory.OtherId,
+                "Diğer")
+        };
+
+        var existingNormalizedNames = await context.TicketCategories
+            .Select(category => category.NormalizedName)
+            .ToListAsync();
+
+        foreach (var category in defaultCategories)
+        {
+            if (!existingNormalizedNames.Contains(category.NormalizedName))
+            {
+                await context.TicketCategories.AddAsync(category);
+            }
+        }
+
         const string adminDepartmentName = "Sistem Yönetimi";
 
         var adminDepartment =
