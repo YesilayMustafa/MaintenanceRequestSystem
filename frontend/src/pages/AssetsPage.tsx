@@ -3,6 +3,7 @@ import {
     useState,
     type SubmitEvent,
 } from "react";
+import { Link } from "react-router-dom";
 
 import {
     changeAssetStatus,
@@ -452,7 +453,7 @@ export function AssetsPage() {
                             <th>Departman</th>
                             <th>Konum</th>
                             <th>Durum</th>
-                            {user?.role === "Admin" && <th>İşlemler</th>}
+                            <th>İşlemler</th>
                         </tr>
                     </thead>
 
@@ -472,9 +473,16 @@ export function AssetsPage() {
                                     <ActiveStatusBadge isActive={asset.isActive} />
                                 </td>
 
+                                <td>
+                                    <div className="action-buttons">
+                                        <Link
+                                            to={`/assets/${asset.id}/history`}
+                                            className="button button-secondary button-small"
+                                        >
+                                            Bakım Geçmişi
+                                        </Link>
                                 {user?.role === "Admin" && (
-                                    <td>
-                                        <div className="action-buttons">
+                                    <>
                                         <button
                                             type="button"
                                             className="button button-secondary button-small"
@@ -504,9 +512,10 @@ export function AssetsPage() {
                                                     ? "Pasif Yap"
                                                     : "Aktif Yap"}
                                         </button>
-                                        </div>
-                                    </td>
+                                    </>
                                 )}
+                                    </div>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
