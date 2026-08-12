@@ -338,4 +338,33 @@ new TicketQueryService(
                 UserRole.Employee));
     }
 
+    [Fact]
+    public async Task GetByIdAsync_WhenTechnicianRequestsUnassignedTicket_ThrowsForbiddenException()
+    {
+        var creator = CreateUser();
+        var technician = CreateTechnician();
+
+        var ticket =
+            new Ticket(
+                Guid.NewGuid(),
+                creator.Id,
+                "Bilgisayar açılmıyor",
+                "Cihaz açılmıyor.",
+                TicketPriority.High);
+
+        var service =
+new TicketQueryService(
+                new FakeTicketRepository
+                {
+                    TicketById = ticket
+                },
+                new FakeUserRepository());
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => service.GetByIdAsync(
+                ticket.Id,
+                technician.Id,
+                UserRole.Technician));
+    }
+
 }

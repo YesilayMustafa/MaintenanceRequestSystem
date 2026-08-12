@@ -4,6 +4,7 @@ using System.Text;
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using MaintenanceRequestSystem.Application.Authentication;
 using MaintenanceRequestSystem.Application.Authentication.Interfaces;
 using MaintenanceRequestSystem.Application.Authentication.Models;
 using MaintenanceRequestSystem.Domain.Entities;
@@ -50,8 +51,12 @@ public sealed class JwtTokenService : IJwtTokenService
         user.Email),
 
     new(
-        "role",
-        user.Role.ToString())
+        AuthenticationClaimNames.Role,
+        user.Role.ToString()),
+
+    new(
+        AuthenticationClaimNames.SecurityVersion,
+        user.SecurityVersion.ToString())
 };
 
         var keyBytes =

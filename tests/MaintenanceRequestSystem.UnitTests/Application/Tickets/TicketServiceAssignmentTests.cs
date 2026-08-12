@@ -346,6 +346,49 @@ new TicketAssignmentService(
     }
 
     [Fact]
+    public async Task AssignAsync_WhenTechnicianIsPendingInvitation_ThrowsValidationException()
+    {
+        var creator = CreateUser();
+        var technician = User.CreateInvited(
+            "Pending Technician",
+            $"pending-{Guid.NewGuid():N}@example.com",
+            UserRole.Technician,
+            Guid.NewGuid());
+
+        var ticket = new Ticket(
+            Guid.NewGuid(),
+            creator.Id,
+            "Bilgisayar açılmıyor",
+            "Cihaz açılmıyor.",
+            TicketPriority.High);
+
+        var ticketRepository = new FakeTicketRepository
+        {
+            TicketById = ticket
+        };
+
+        var service = new TicketAssignmentService(
+            ticketRepository,
+            new FakeUserRepository
+            {
+                UserById = technician
+            },
+            NoOpAuditLogService);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.AssignAsync(
+                ticket.Id,
+                Guid.NewGuid(),
+                UserRole.Admin,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technician.Id
+                }));
+
+        Assert.Equal(0, ticketRepository.SaveChangesCallCount);
+    }
+
+    [Fact]
     public async Task AssignAsync_WithValidRequest_AssignsAndSavesTicket()
     {
         var creator = CreateUser();

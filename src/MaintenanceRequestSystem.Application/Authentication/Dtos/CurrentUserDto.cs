@@ -8,5 +8,8 @@ public sealed record CurrentUserDto(
     Guid Id,
     string FullName,
     string Email,
-    string Role
-    );
+    string Role,
+    Guid DepartmentId,
+    string DepartmentName,
+    bool IsActive,
+    string AccountStatus);

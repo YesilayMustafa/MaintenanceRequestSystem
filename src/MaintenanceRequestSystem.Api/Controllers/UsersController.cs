@@ -1,5 +1,7 @@
 ﻿using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Authentication.Interfaces;
+using MaintenanceRequestSystem.Api.Authentication;
 using MaintenanceRequestSystem.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +14,74 @@ namespace MaintenanceRequestSystem.Api.Controllers;
 public sealed class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IAccountLifecycleService _accountLifecycleService;
+    private readonly ICurrentUserAccessor _currentUserAccessor;
 
-    public UsersController(IUserService userService)
+    public UsersController(
+        IUserService userService,
+        IAccountLifecycleService accountLifecycleService,
+        ICurrentUserAccessor currentUserAccessor)
     {
         _userService = userService;
+        _accountLifecycleService = accountLifecycleService;
+        _currentUserAccessor = currentUserAccessor;
+    }
+
+    [HttpPost("invitations")]
+    [ProducesResponseType(
+        typeof(UserDto),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<UserDto>> InviteUser(
+        InviteUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var performedByUserId,
+                out _))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _accountLifecycleService.InviteUserAsync(
+            performedByUserId,
+            request,
+            cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = user.Id },
+            user);
+    }
+
+    [HttpPost("{id:guid}/invitations/resend")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> ResendInvitation(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var performedByUserId,
+                out _))
+        {
+            return Unauthorized();
+        }
+
+        await _accountLifecycleService.ResendInvitationAsync(
+            id,
+            performedByUserId,
+            cancellationToken);
+
+        return NoContent();
     }
 
     [HttpGet]
@@ -60,6 +126,10 @@ public sealed class UsersController : ControllerBase
         StatusCodes.Status404NotFound)]
     [ProducesResponseType(
         StatusCodes.Status409Conflict)]
+    /// <summary>
+    /// Geriye uyumluluk için parola ile doğrudan kullanıcı oluşturur.
+    /// Yeni yönetim arayüzü kullanıcı daveti için POST /api/users/invitations kullanmalıdır.
+    /// </summary>
     public async Task<ActionResult<UserDto>> Create(
         CreateUserRequest request,
         CancellationToken cancellationToken)
@@ -109,8 +179,16 @@ public sealed class UsersController : ControllerBase
         ChangeUserStatusRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var performedByUserId,
+                out _))
+        {
+            return Unauthorized();
+        }
+
         await _userService.ChangeStatusAsync(
             id,
+            performedByUserId,
             request,
             cancellationToken);
 
@@ -129,8 +207,16 @@ public sealed class UsersController : ControllerBase
         ChangeUserRoleRequest request,
         CancellationToken cancellationToken)
     {
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var performedByUserId,
+                out _))
+        {
+            return Unauthorized();
+        }
+
         await _userService.ChangeRoleAsync(
             id,
+            performedByUserId,
             request,
             cancellationToken);
 

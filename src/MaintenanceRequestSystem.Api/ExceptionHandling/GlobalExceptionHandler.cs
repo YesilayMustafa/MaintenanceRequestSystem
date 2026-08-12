@@ -54,6 +54,11 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 "Kimlik doğrulama başarısız",
                 exception.Message),
 
+            EmailDeliveryException => new ErrorDetails(
+                StatusCodes.Status503ServiceUnavailable,
+                "E-posta teslimatı başarısız",
+                exception.Message),
+
             _ => new ErrorDetails(
                 StatusCodes.Status500InternalServerError,
                 "Sunucu hatası",

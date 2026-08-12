@@ -200,6 +200,13 @@ public sealed class TicketQueryService : ITicketQueryService
                 "Başka bir kullanıcıya ait talebi görüntüleyemezsiniz.");
         }
 
+        if (currentUserRole == UserRole.Technician &&
+            ticket.AssignedTechnicianId != currentUserId)
+        {
+            throw new ForbiddenException(
+                "Yalnızca size atanmış talepleri görüntüleyebilirsiniz.");
+        }
+
         return TicketDtoMapper.MapToDto(ticket);
     }
 

@@ -22,6 +22,57 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.AccountToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "Type", "UsedAt", "RevokedAt", "ExpiresAt");
+
+                    b.ToTable("account_tokens", (string)null);
+                });
+
             modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.Asset", b =>
                 {
                     b.Property<Guid>("Id")
@@ -377,12 +428,15 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("full_name");
 
+                    b.Property<DateTime?>("InvitationAcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("invitation_accepted_at");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("password_hash");
@@ -392,6 +446,12 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("role");
+
+                    b.Property<int>("SecurityVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("security_version");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -405,6 +465,17 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.AccountToken", b =>
+                {
+                    b.HasOne("MaintenanceRequestSystem.Domain.Entities.User", "User")
+                        .WithMany("AccountTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.Asset", b =>
@@ -525,6 +596,8 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MaintenanceRequestSystem.Domain.Entities.User", b =>
                 {
+                    b.Navigation("AccountTokens");
+
                     b.Navigation("AssignedTickets");
 
                     b.Navigation("AuditLogs");

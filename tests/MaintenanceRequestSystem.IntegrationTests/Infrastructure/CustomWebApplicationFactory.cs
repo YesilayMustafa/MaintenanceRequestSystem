@@ -12,10 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
+using MaintenanceRequestSystem.Application.Authentication.Interfaces;
 
 namespace MaintenanceRequestSystem.IntegrationTests.Infrastructure;
 
-public sealed class CustomWebApplicationFactory
+public class CustomWebApplicationFactory
     : WebApplicationFactory<Program>
 {
     public const string AdminEmail =
@@ -77,6 +78,9 @@ public sealed class CustomWebApplicationFactory
                         ["Jwt:Audience"] = TestAudience,
                         ["Jwt:SigningKey"] = TestSigningKey,
                         ["Jwt:ExpirationMinutes"] = "60",
+                        ["Frontend:BaseUrl"] =
+                            "https://frontend.integration.example",
+                        ["Email:Mode"] = "DevelopmentFile",
 
                         ["SeedAdmin:Email"] = AdminEmail,
                         ["SeedAdmin:Password"] = AdminPassword,
@@ -105,6 +109,11 @@ public sealed class CustomWebApplicationFactory
                     options.UseInMemoryDatabase(
                         _databaseName,
                         _databaseRoot));
+
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<TestEmailSender>();
+            services.AddSingleton<IEmailSender>(provider =>
+                provider.GetRequiredService<TestEmailSender>());
         });
     }
 }

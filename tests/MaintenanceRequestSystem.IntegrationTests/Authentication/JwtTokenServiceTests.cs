@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Application.Authentication;
 using MaintenanceRequestSystem.Infrastructure.Authentication;
 using Microsoft.Extensions.Options;
 
@@ -93,8 +94,14 @@ public sealed class JwtTokenServiceTests
         Assert.Contains(
             token.Claims,
             claim =>
-                claim.Type == "role" &&
+                claim.Type == AuthenticationClaimNames.Role &&
                 claim.Value == UserRole.Admin.ToString());
+
+        Assert.Contains(
+            token.Claims,
+            claim =>
+                claim.Type == AuthenticationClaimNames.SecurityVersion &&
+                claim.Value == user.SecurityVersion.ToString());
 
         Assert.Contains(
             token.Claims,

@@ -7,11 +7,15 @@ using MaintenanceRequestSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using MaintenanceRequestSystem.Application.Common.Exceptions;
 using Npgsql;
+using System.Data;
 
 namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 
 public sealed class UserRepository : IUserRepository
 {
+    private static readonly SemaphoreSlim InMemoryTransactionLock =
+        new(1, 1);
+
     private readonly ApplicationDbContext _context;
 
     public UserRepository(ApplicationDbContext context)
@@ -48,7 +52,6 @@ public sealed class UserRepository : IUserRepository
             email.Trim().ToLowerInvariant();
 
         return await _context.Users
-            .AsNoTracking()
             .FirstOrDefaultAsync(
                 user => user.Email == normalizedEmail,
                 cancellationToken);
@@ -96,6 +99,66 @@ public sealed class UserRepository : IUserRepository
         {
             throw new ConflictException(
                 "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var.");
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException(
+                "Hesap tokenı başka bir istek tarafından kullanıldı veya değiştirildi.");
+        }
+    }
+
+    public async Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        if (!_context.Database.IsRelational())
+        {
+            await InMemoryTransactionLock.WaitAsync(
+                cancellationToken);
+
+            try
+            {
+                await operation(cancellationToken);
+                return;
+            }
+            finally
+            {
+                InMemoryTransactionLock.Release();
+            }
+        }
+
+        await using var transaction =
+            await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+
+        try
+        {
+            await operation(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (PostgresException exception)
+            when (exception.SqlState ==
+                PostgresErrorCodes.SerializationFailure)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+
+            throw new ConflictException(
+                "Kullanıcı işlemi eşzamanlı bir değişiklikle çakıştı.");
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.SerializationFailure
+            })
+        {
+            await transaction.RollbackAsync(cancellationToken);
+
+            throw new ConflictException(
+                "Kullanıcı işlemi eşzamanlı bir değişiklikle çakıştı.");
         }
     }
 }

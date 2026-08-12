@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.Text;
 using MaintenanceRequestSystem.Application.Authentication.Interfaces;
+using MaintenanceRequestSystem.Application.Authentication.Models;
 using Microsoft.AspNetCore.Identity;
+using IdentityPasswordVerificationResult =
+    Microsoft.AspNetCore.Identity.PasswordVerificationResult;
 
 namespace MaintenanceRequestSystem.Infrastructure.Authentication;
 
@@ -15,7 +18,7 @@ public sealed class PasswordHashService : IPasswordHashService
 
     public string HashPassword(string password)
     {
-        if (string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrEmpty(password))
         {
             throw new ArgumentException(
                 "Parola boş olamaz.",
@@ -27,14 +30,14 @@ public sealed class PasswordHashService : IPasswordHashService
             password);
     }
 
-    public bool VerifyPassword(
-        string passwordHash,
+    public PasswordVerificationOutcome VerifyPassword(
+        string? passwordHash,
         string providedPassword)
     {
         if (string.IsNullOrWhiteSpace(passwordHash) ||
-            string.IsNullOrWhiteSpace(providedPassword))
+            string.IsNullOrEmpty(providedPassword))
         {
-            return false;
+            return PasswordVerificationOutcome.Failed;
         }
 
         var result =
@@ -43,9 +46,16 @@ public sealed class PasswordHashService : IPasswordHashService
                 passwordHash,
                 providedPassword);
 
-        return result is
-            PasswordVerificationResult.Success or
-            PasswordVerificationResult.SuccessRehashNeeded;
+        return result switch
+        {
+            IdentityPasswordVerificationResult.Success =>
+                PasswordVerificationOutcome.Success,
+
+            IdentityPasswordVerificationResult.SuccessRehashNeeded =>
+                PasswordVerificationOutcome.SuccessRehashNeeded,
+
+            _ => PasswordVerificationOutcome.Failed
+        };
     }
 
     private sealed class PasswordHashContext

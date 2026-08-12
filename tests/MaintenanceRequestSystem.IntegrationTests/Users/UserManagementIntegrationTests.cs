@@ -6,10 +6,15 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using MaintenanceRequestSystem.Application.Authentication.Dtos;
+using MaintenanceRequestSystem.Application.Authentication;
 using MaintenanceRequestSystem.Application.Departments.Dtos;
 using MaintenanceRequestSystem.Application.Users.Dtos;
 using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
+using System.IdentityModel.Tokens.Jwt;
+using MaintenanceRequestSystem.Infrastructure.Persistence;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 
 namespace MaintenanceRequestSystem.IntegrationTests.Users;
 
@@ -17,10 +22,12 @@ public sealed class UserManagementIntegrationTests
     : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public UserManagementIntegrationTests(
         CustomWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -260,6 +267,11 @@ public sealed class UserManagementIntegrationTests
                 departmentId,
                 password);
 
+        var oldAccessToken =
+            await LoginAsync(
+                createdUser.Email,
+                password);
+
         var roleRequest =
             new ChangeUserRoleRequest
             {
@@ -279,6 +291,19 @@ public sealed class UserManagementIntegrationTests
         Assert.Equal(
             HttpStatusCode.NoContent,
             response.StatusCode);
+
+        using var oldTokenRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                "/api/auth/me",
+                oldAccessToken);
+
+        var oldTokenResponse =
+            await _client.SendAsync(oldTokenRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            oldTokenResponse.StatusCode);
 
         var loginResponse =
             await LoginForResponseAsync(
@@ -309,6 +334,11 @@ public sealed class UserManagementIntegrationTests
                 departmentId,
                 password);
 
+        var oldAccessToken =
+            await LoginAsync(
+                createdUser.Email,
+                password);
+
         var statusRequest =
             new ChangeUserStatusRequest
             {
@@ -329,6 +359,19 @@ public sealed class UserManagementIntegrationTests
             HttpStatusCode.NoContent,
             statusResponse.StatusCode);
 
+        using var oldTokenRequest =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                "/api/auth/me",
+                oldAccessToken);
+
+        var oldTokenResponse =
+            await _client.SendAsync(oldTokenRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            oldTokenResponse.StatusCode);
+
         var loginRequest =
             new LoginRequest
             {
@@ -344,6 +387,162 @@ public sealed class UserManagementIntegrationTests
         Assert.Equal(
             HttpStatusCode.Unauthorized,
             loginResponse.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        Assert.True(await context.AuditLogs.AnyAsync(
+            auditLog =>
+                auditLog.Action == "UserDeactivated" &&
+                auditLog.EntityId == createdUser.Id.ToString()));
+    }
+
+    [Fact]
+    public async Task Login_WithValidUser_IncludesSecurityVersionClaim()
+    {
+        // Arrange
+        var loginResponse = await LoginForResponseAsync(
+            CustomWebApplicationFactory.EmployeeEmail,
+            CustomWebApplicationFactory.EmployeePassword);
+
+        // Act
+        var token = new JwtSecurityTokenHandler()
+            .ReadJwtToken(loginResponse.AccessToken);
+
+        // Assert
+        Assert.Contains(
+            token.Claims,
+            claim =>
+                claim.Type == AuthenticationClaimNames.SecurityVersion &&
+                claim.Value == "1");
+    }
+
+    [Fact]
+    public async Task GetCurrentUser_AfterProfileUpdate_ReturnsDatabaseValues()
+    {
+        // Arrange
+        var adminToken = await LoginAsync(
+            CustomWebApplicationFactory.AdminEmail,
+            CustomWebApplicationFactory.AdminPassword);
+
+        var departmentId =
+            await GetActiveDepartmentIdAsync(adminToken);
+
+        var password = "UserTest123!";
+        var createdUser = await CreateUserAsync(
+            adminToken,
+            departmentId,
+            password);
+
+        var userToken = await LoginAsync(
+            createdUser.Email,
+            password);
+
+        var updatedEmail =
+            $"profile-{Guid.NewGuid():N}@example.com";
+
+        using var updateRequest = CreateAuthorizedRequest(
+            HttpMethod.Put,
+            $"/api/users/{createdUser.Id}",
+            adminToken,
+            new UpdateUserRequest
+            {
+                FullName = "Veritabanı Profil Kullanıcısı",
+                Email = updatedEmail,
+                DepartmentId = departmentId
+            });
+
+        var updateResponse = await _client.SendAsync(updateRequest);
+        updateResponse.EnsureSuccessStatusCode();
+
+        using var currentUserRequest = CreateAuthorizedRequest(
+            HttpMethod.Get,
+            "/api/auth/me",
+            userToken);
+
+        // Act
+        var response = await _client.SendAsync(currentUserRequest);
+        var currentUser = await response.Content
+            .ReadFromJsonAsync<CurrentUserDto>();
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(currentUser);
+        Assert.Equal("Veritabanı Profil Kullanıcısı", currentUser.FullName);
+        Assert.Equal(updatedEmail, currentUser.Email);
+        Assert.Equal(departmentId, currentUser.DepartmentId);
+        Assert.False(string.IsNullOrWhiteSpace(currentUser.DepartmentName));
+        Assert.Equal("Active", currentUser.AccountStatus);
+    }
+
+    [Fact]
+    public async Task DeactivateCurrentAdmin_ReturnsForbidden()
+    {
+        // Arrange
+        var adminToken = await LoginAsync(
+            CustomWebApplicationFactory.AdminEmail,
+            CustomWebApplicationFactory.AdminPassword);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var adminId = await context.Users
+            .Where(user =>
+                user.Email == CustomWebApplicationFactory.AdminEmail)
+            .Select(user => user.Id)
+            .SingleAsync();
+
+        using var request = CreateAuthorizedRequest(
+            HttpMethod.Patch,
+            $"/api/users/{adminId}/status",
+            adminToken,
+            new ChangeUserStatusRequest
+            {
+                IsActive = false
+            });
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DemoteLastActiveAdmin_ReturnsConflict()
+    {
+        // Arrange
+        var adminToken = await LoginAsync(
+            CustomWebApplicationFactory.AdminEmail,
+            CustomWebApplicationFactory.AdminPassword);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var adminId = await context.Users
+            .Where(user =>
+                user.Email == CustomWebApplicationFactory.AdminEmail)
+            .Select(user => user.Id)
+            .SingleAsync();
+
+        using var request = CreateAuthorizedRequest(
+            HttpMethod.Patch,
+            $"/api/users/{adminId}/role",
+            adminToken,
+            new ChangeUserRoleRequest
+            {
+                Role = UserRole.Employee
+            });
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     private async Task<UserDto> CreateUserAsync(

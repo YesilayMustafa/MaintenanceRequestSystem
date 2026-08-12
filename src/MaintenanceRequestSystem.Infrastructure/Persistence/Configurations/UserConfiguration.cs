@@ -35,8 +35,7 @@ public sealed class UserConfiguration
 
         builder.Property(user => user.PasswordHash)
             .HasColumnName("password_hash")
-            .HasMaxLength(500)
-            .IsRequired();
+            .HasMaxLength(500);
 
         builder.Property(user => user.Role)
             .HasColumnName("role")
@@ -60,6 +59,14 @@ public sealed class UserConfiguration
 
         builder.Property(user => user.UpdatedAt)
             .HasColumnName("updated_at");
+
+        builder.Property(user => user.InvitationAcceptedAt)
+            .HasColumnName("invitation_accepted_at");
+
+        builder.Property(user => user.SecurityVersion)
+            .HasColumnName("security_version")
+            .HasDefaultValue(1)
+            .IsRequired();
 
         builder.HasOne(user => user.Department)
             .WithMany(department => department.Users)

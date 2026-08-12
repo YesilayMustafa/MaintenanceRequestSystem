@@ -30,4 +30,11 @@ public interface IUserRepository
 
     Task SaveChangesAsync(
         CancellationToken cancellationToken = default);
+
+    Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default)
+    {
+        return operation(cancellationToken);
+    }
 }

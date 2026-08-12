@@ -1,9 +1,10 @@
 ﻿using MaintenanceRequestSystem.Application.Authentication.Dtos;
 using MaintenanceRequestSystem.Application.Authentication.Interfaces;
+using MaintenanceRequestSystem.Api.Authentication;
+using MaintenanceRequestSystem.Api.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 
 namespace MaintenanceRequestSystem.Api.Controllers;
 
@@ -12,15 +13,22 @@ namespace MaintenanceRequestSystem.Api.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService;
+    private readonly IAccountLifecycleService _accountLifecycleService;
+    private readonly ICurrentUserAccessor _currentUserAccessor;
 
     public AuthController(
-        IAuthenticationService authenticationService)
+        IAuthenticationService authenticationService,
+        IAccountLifecycleService accountLifecycleService,
+        ICurrentUserAccessor currentUserAccessor)
     {
         _authenticationService = authenticationService;
+        _accountLifecycleService = accountLifecycleService;
+        _currentUserAccessor = currentUserAccessor;
     }
 
     [AllowAnonymous]
     [HttpPost("login")]
+    [EnableRateLimiting(AccountRateLimitPolicyNames.Login)]
     [ProducesResponseType(
         typeof(LoginResponse),
         StatusCodes.Status200OK)]
@@ -46,36 +54,103 @@ public sealed class AuthController : ControllerBase
     typeof(CurrentUserDto),
     StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public ActionResult<CurrentUserDto> GetCurrentUser()
+    public async Task<ActionResult<CurrentUserDto>> GetCurrentUser(
+        CancellationToken cancellationToken)
     {
-        var userIdValue =
-            User.FindFirstValue(
-                JwtRegisteredClaimNames.Sub);
-
-        var fullName =
-            User.FindFirstValue(
-                JwtRegisteredClaimNames.Name);
-
-        var email =
-            User.FindFirstValue(
-                JwtRegisteredClaimNames.Email);
-
-        var role =
-            User.FindFirstValue("role");
-
-        if (!Guid.TryParse(userIdValue, out var userId) ||
-            string.IsNullOrWhiteSpace(fullName) ||
-            string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(role))
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var userId,
+                out _))
         {
             return Unauthorized();
         }
 
-        return Ok(
-            new CurrentUserDto(
+        var currentUser =
+            await _authenticationService.GetCurrentUserAsync(
                 userId,
-                fullName,
-                email,
-                role));
+                cancellationToken);
+
+        return Ok(currentUser);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("invitations/accept")]
+    [EnableRateLimiting(
+        AccountRateLimitPolicyNames.AcceptInvitation)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AcceptInvitation(
+        AcceptInvitationRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _accountLifecycleService.AcceptInvitationAsync(
+            request,
+            cancellationToken);
+
+        return NoContent();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting(
+        AccountRateLimitPolicyNames.ForgotPassword)]
+    [ProducesResponseType(
+        typeof(ForgotPasswordResponse),
+        StatusCodes.Status202Accepted)]
+    public async Task<ActionResult<ForgotPasswordResponse>>
+        ForgotPassword(
+            ForgotPasswordRequest request,
+            CancellationToken cancellationToken)
+    {
+        var response =
+            await _accountLifecycleService.ForgotPasswordAsync(
+                request,
+                cancellationToken);
+
+        return Accepted(response);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    [EnableRateLimiting(
+        AccountRateLimitPolicyNames.ResetPassword)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ResetPassword(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _accountLifecycleService.ResetPasswordAsync(
+            request,
+            cancellationToken);
+
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    [EnableRateLimiting(
+        AccountRateLimitPolicyNames.ChangePassword)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword(
+        ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!_currentUserAccessor.TryGetCurrentUser(
+                out var userId,
+                out _))
+        {
+            return Unauthorized();
+        }
+
+        await _accountLifecycleService.ChangePasswordAsync(
+            userId,
+            request,
+            cancellationToken);
+
+        return NoContent();
     }
 }

@@ -19,6 +19,8 @@ using MaintenanceRequestSystem.Application.TicketComments.Interfaces;
 using MaintenanceRequestSystem.Application.TicketComments.Services;
 using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
 using MaintenanceRequestSystem.Application.AuditLogs.Services;
+using MaintenanceRequestSystem.Application.Authentication.Models;
+using MaintenanceRequestSystem.Infrastructure.Email;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -26,7 +28,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool isDevelopment)
     {
         var connectionString =
             configuration.GetConnectionString("DefaultConnection")
@@ -38,6 +41,8 @@ public static class DependencyInjection
 
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IPasswordHashService, PasswordHashService>();
+        services.AddSingleton<IAccountTokenGenerator, AccountTokenGenerator>();
+        services.AddScoped<IAccountTokenRepository, AccountTokenRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAssetRepository, AssetRepository>();
@@ -73,6 +78,15 @@ public static class DependencyInjection
             IAuthenticationService,
             AuthenticationService>();
 
+        services.AddScoped<
+            IAccountLifecycleService,
+            AccountLifecycleService>();
+
+        AddAccountLifecycleConfiguration(
+            services,
+            configuration,
+            isDevelopment);
+
         services.AddScoped<IDepartmentService, DepartmentService>();
         services.AddOptions<JwtOptions>()
     .Bind(
@@ -101,6 +115,103 @@ public static class DependencyInjection
 
 
         return services;
+    }
+
+    private static void AddAccountLifecycleConfiguration(
+        IServiceCollection services,
+        IConfiguration configuration,
+        bool isDevelopment)
+    {
+        services.AddSingleton(_ =>
+            CreateAccountLifecycleSettings(configuration));
+
+        var emailOptions =
+            configuration
+                .GetSection(EmailDeliveryOptions.SectionName)
+                .Get<EmailDeliveryOptions>()
+            ?? new EmailDeliveryOptions();
+
+        ValidateEmailOptions(emailOptions, isDevelopment);
+        services.AddSingleton(emailOptions);
+
+        if (isDevelopment)
+        {
+            services.AddSingleton<
+                IEmailSender,
+                DevelopmentFileEmailSender>();
+        }
+        else
+        {
+            services.AddSingleton<
+                IEmailSender,
+                SmtpEmailSender>();
+        }
+    }
+
+    private static AccountLifecycleSettings
+        CreateAccountLifecycleSettings(
+            IConfiguration configuration)
+    {
+        var invitationExpirationHours =
+            configuration.GetValue<int?>(
+                "AccountLifecycle:InvitationExpirationHours")
+            ?? 24;
+
+        var passwordResetExpirationMinutes =
+            configuration.GetValue<int?>(
+                "AccountLifecycle:PasswordResetExpirationMinutes")
+            ?? 60;
+
+        var frontendBaseUrl = configuration["Frontend:BaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+        {
+            throw new InvalidOperationException(
+                "Frontend:BaseUrl configuration değeri bulunamadı.");
+        }
+
+        return new AccountLifecycleSettings(
+            TimeSpan.FromHours(invitationExpirationHours),
+            TimeSpan.FromMinutes(passwordResetExpirationMinutes),
+            frontendBaseUrl);
+    }
+
+    private static void ValidateEmailOptions(
+        EmailDeliveryOptions options,
+        bool isDevelopment)
+    {
+        if (isDevelopment)
+        {
+            if (!string.Equals(
+                    options.Mode,
+                    "DevelopmentFile",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Development ortamında Email:Mode DevelopmentFile olmalıdır.");
+            }
+
+            return;
+        }
+
+        if (!string.Equals(
+                options.Mode,
+                "Smtp",
+                StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(options.Host) ||
+            options.Port is < 1 or > 65535 ||
+            string.IsNullOrWhiteSpace(options.FromAddress))
+        {
+            throw new InvalidOperationException(
+                "Production SMTP configuration eksik veya geçersiz.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Username) !=
+            string.IsNullOrWhiteSpace(options.Password))
+        {
+            throw new InvalidOperationException(
+                "SMTP kullanıcı adı ve parola birlikte tanımlanmalıdır.");
+        }
     }
 
     private static bool IsValidSigningKey(

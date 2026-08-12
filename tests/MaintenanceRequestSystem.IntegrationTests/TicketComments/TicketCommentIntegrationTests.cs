@@ -158,7 +158,7 @@ public sealed class TicketCommentIntegrationTests
     }
 
     [Fact]
-    public async Task GetComments_WithUnsupportedRoleToken_ReturnsForbidden()
+    public async Task GetComments_WithUnsupportedRoleToken_ReturnsUnauthorized()
     {
         var setup =
             await CreateTicketSetupAsync();
@@ -175,7 +175,7 @@ public sealed class TicketCommentIntegrationTests
             await _client.SendAsync(request);
 
         Assert.Equal(
-            HttpStatusCode.Forbidden,
+            HttpStatusCode.Unauthorized,
             response.StatusCode);
     }
 
@@ -221,6 +221,156 @@ public sealed class TicketCommentIntegrationTests
         Assert.Contains(
             comments,
             item => item.Id == comment.Id);
+    }
+
+    [Fact]
+    public async Task GetComments_WithAssignedTechnicianToken_ReturnsOk()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            technician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}/comments",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetComments_WithDifferentTechnicianToken_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var differentTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            assignedTechnician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                differentTechnician.Email,
+                differentTechnician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}/comments",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithAssignedTechnicianToken_ReturnsCreated()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            technician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        var comment =
+            await CreateCommentAsync(
+                technicianToken,
+                setup.Ticket.Id,
+                "Atanmış teknik personel yorumu.");
+
+        Assert.Equal(
+            setup.Ticket.Id,
+            comment.TicketId);
+
+        Assert.Equal(
+            "Technician",
+            comment.UserRole);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithDifferentTechnicianToken_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var differentTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            assignedTechnician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                differentTechnician.Email,
+                differentTechnician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Post,
+                $"/api/tickets/{setup.Ticket.Id}/comments",
+                technicianToken,
+                new CreateTicketCommentRequest
+                {
+                    Content =
+                        "Başka teknik personelin yorumu."
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
     }
 
     private async Task<CommentSetup>
@@ -389,6 +539,74 @@ public sealed class TicketCommentIntegrationTests
             password);
     }
 
+    private async Task<CreatedTechnician>
+        CreateTechnicianAsync(
+            string adminToken)
+    {
+        var departmentId =
+            await GetActiveDepartmentIdAsync(
+                adminToken);
+
+        var email =
+            $"comment-technician-{Guid.NewGuid():N}@example.com";
+
+        const string password =
+            "TechnicianTest123!";
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Post,
+                "/api/users",
+                adminToken,
+                new CreateUserRequest
+                {
+                    FullName = "Yorum Test Teknik Personeli",
+                    Email = email,
+                    Password = password,
+                    Role = UserRole.Technician,
+                    DepartmentId = departmentId
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        var user =
+            await response.Content
+                .ReadFromJsonAsync<UserDto>();
+
+        Assert.NotNull(user);
+
+        return new CreatedTechnician(
+            user.Id,
+            email,
+            password);
+    }
+
+    private async Task AssignTicketAsync(
+        string adminToken,
+        Guid ticketId,
+        Guid technicianId)
+    {
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Patch,
+                $"/api/tickets/{ticketId}/assignment",
+                adminToken,
+                new AssignTicketRequest
+                {
+                    TechnicianId = technicianId
+                });
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+    }
+
     private async Task<Guid>
         GetActiveDepartmentIdAsync(
             string accessToken)
@@ -529,6 +747,11 @@ public sealed class TicketCommentIntegrationTests
         TicketDto Ticket);
 
     private sealed record CreatedEmployee(
+        string Email,
+        string Password);
+
+    private sealed record CreatedTechnician(
+        Guid Id,
         string Email,
         string Password);
 }

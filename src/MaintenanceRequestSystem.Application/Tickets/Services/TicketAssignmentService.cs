@@ -80,10 +80,10 @@ public sealed class TicketAssignmentService : ITicketAssignmentService
                 "Teknik personel bulunamadı.");
         }
 
-        if (!technician.IsActive)
+        if (!technician.IsOperational)
         {
             throw new RequestValidationException(
-                "Pasif bir kullanıcıya talep atanamaz.");
+                "Yalnızca kullanıma hazır aktif bir teknik personele talep atanabilir.");
         }
 
         if (technician.Role != UserRole.Technician)
@@ -187,10 +187,10 @@ public sealed class TicketAssignmentService : ITicketAssignmentService
                 "Teknik personel bulunamadı.");
         }
 
-        if (!technician.IsActive)
+        if (!technician.IsOperational)
         {
             throw new RequestValidationException(
-                "Pasif bir kullanıcıya talep atanamaz.");
+                "Yalnızca kullanıma hazır aktif bir teknik personele talep atanabilir.");
         }
 
         if (technician.Role != UserRole.Technician)

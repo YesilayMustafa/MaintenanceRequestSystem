@@ -48,7 +48,7 @@ public sealed partial class TicketManagementIntegrationTests
     }
 
     [Fact]
-    public async Task GetTickets_WithUnsupportedRoleToken_ReturnsForbidden()
+    public async Task GetTickets_WithUnsupportedRoleToken_ReturnsUnauthorized()
     {
         var accessToken =
             CreateTokenWithRole("999");
@@ -63,7 +63,7 @@ public sealed partial class TicketManagementIntegrationTests
             await _client.SendAsync(request);
 
         Assert.Equal(
-            HttpStatusCode.Forbidden,
+            HttpStatusCode.Unauthorized,
             response.StatusCode);
     }
 
@@ -341,6 +341,71 @@ public sealed partial class TicketManagementIntegrationTests
     }
 
     [Fact]
+    public async Task GetTickets_WithTechnicianToken_ReturnsOnlyAssignedTickets()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var otherTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var otherTechnicianTicket =
+            await CreateTicketAsync(
+                setup.EmployeeToken,
+                setup.Ticket.AssetId,
+                "Başka teknisyenin talebi",
+                TicketPriority.Medium);
+
+        var unassignedTicket =
+            await CreateTicketAsync(
+                setup.EmployeeToken,
+                setup.Ticket.AssetId,
+                "Atanmamış talep",
+                TicketPriority.Low);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            assignedTechnician.Id);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            otherTechnicianTicket.Id,
+            otherTechnician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                assignedTechnician.Email,
+                assignedTechnician.Password);
+
+        var result =
+            await GetPagedTicketsAsync(
+                technicianToken,
+                $"/api/tickets?assetId={setup.Ticket.AssetId}" +
+                "&pageNumber=1&pageSize=20");
+
+        var visibleTicket =
+            Assert.Single(result.Items);
+
+        Assert.Equal(
+            setup.Ticket.Id,
+            visibleTicket.Id);
+
+        Assert.DoesNotContain(
+            result.Items,
+            ticket => ticket.Id == otherTechnicianTicket.Id);
+
+        Assert.DoesNotContain(
+            result.Items,
+            ticket => ticket.Id == unassignedTicket.Id);
+    }
+
+    [Fact]
     public async Task CreateTicket_WithEmployeeToken_ReturnsCreatedOpenTicket()
     {
         var adminToken =
@@ -483,6 +548,78 @@ public sealed partial class TicketManagementIntegrationTests
 
         Assert.Equal(
             HttpStatusCode.OK,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTicket_WithAssignedTechnicianToken_ReturnsOk()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            technician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTicket_WithDifferentTechnicianToken_ReturnsForbidden()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var assignedTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        var differentTechnician =
+            await CreateTechnicianAsync(
+                setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            assignedTechnician.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                differentTechnician.Email,
+                differentTechnician.Password);
+
+        using var request =
+            CreateAuthorizedRequest(
+                HttpMethod.Get,
+                $"/api/tickets/{setup.Ticket.Id}",
+                technicianToken);
+
+        var response =
+            await _client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
             response.StatusCode);
     }
 

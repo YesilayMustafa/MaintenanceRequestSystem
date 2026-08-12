@@ -241,6 +241,75 @@ public sealed class TicketCommentServiceTests
                 UserRole.Employee));
     }
 
+    [Fact]
+    public async Task GetByTicketIdAsync_WhenTechnicianUsesOtherTechniciansTicket_ThrowsForbiddenException()
+    {
+        var ticketOwner = CreateUser();
+        var assignedTechnician = CreateTechnician();
+        var otherTechnician = CreateTechnician();
+
+        var ticket =
+            CreateTicket(ticketOwner.Id);
+
+        ticket.Assign(
+            assignedTechnician.Id,
+            Guid.NewGuid());
+
+        var service =
+            new TicketCommentService(
+                new FakeTicketCommentRepository(),
+                new FakeTicketRepository
+                {
+                    TicketById = ticket
+                },
+                new FakeUserRepository());
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => service.GetByTicketIdAsync(
+                ticket.Id,
+                otherTechnician.Id,
+                UserRole.Technician));
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenTechnicianUsesOtherTechniciansTicket_ThrowsForbiddenException()
+    {
+        var ticketOwner = CreateUser();
+        var assignedTechnician = CreateTechnician();
+        var otherTechnician = CreateTechnician();
+
+        var ticket =
+            CreateTicket(ticketOwner.Id);
+
+        ticket.Assign(
+            assignedTechnician.Id,
+            Guid.NewGuid());
+
+        var commentRepository =
+            new FakeTicketCommentRepository();
+
+        var service =
+            new TicketCommentService(
+                commentRepository,
+                new FakeTicketRepository
+                {
+                    TicketById = ticket
+                },
+                new FakeUserRepository
+                {
+                    UserById = otherTechnician
+                });
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => service.CreateAsync(
+                ticket.Id,
+                otherTechnician.Id,
+                UserRole.Technician,
+                CreateRequest()));
+
+        Assert.False(commentRepository.AddCalled);
+    }
+
     private static CreateTicketCommentRequest CreateRequest()
     {
         return new CreateTicketCommentRequest
@@ -256,6 +325,16 @@ public sealed class TicketCommentServiceTests
             $"comment-{Guid.NewGuid():N}@example.com",
             "test-password-hash",
             UserRole.Employee,
+            Guid.NewGuid());
+    }
+
+    private static User CreateTechnician()
+    {
+        return new User(
+            "Test Teknik Personeli",
+            $"technician-{Guid.NewGuid():N}@example.com",
+            "test-password-hash",
+            UserRole.Technician,
             Guid.NewGuid());
     }
 

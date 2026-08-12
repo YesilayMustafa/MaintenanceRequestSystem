@@ -32,7 +32,73 @@ public sealed class UserTests
         Assert.Equal(departmentId, user.DepartmentId);
         Assert.True(user.IsActive);
         Assert.NotEqual(default, user.CreatedAt);
+        Assert.Equal(user.CreatedAt, user.InvitationAcceptedAt);
+        Assert.Equal(1, user.SecurityVersion);
         Assert.Null(user.UpdatedAt);
+    }
+
+    [Fact]
+    public void CreateInvited_WithValidValues_CreatesPendingUser()
+    {
+        // Act
+        var user = User.CreateInvited(
+            "Davetli Kullanıcı",
+            "DAVETLI@EXAMPLE.COM",
+            UserRole.Employee,
+            Guid.NewGuid());
+
+        // Assert
+        Assert.True(user.IsActive);
+        Assert.Null(user.PasswordHash);
+        Assert.Null(user.InvitationAcceptedAt);
+        Assert.Equal(1, user.SecurityVersion);
+        Assert.Equal("davetli@example.com", user.Email);
+    }
+
+    [Fact]
+    public void AcceptInvitation_WhenPending_SetsPasswordAndAcceptedAt()
+    {
+        // Arrange
+        var user = User.CreateInvited(
+            "Davetli Kullanıcı",
+            "davetli@example.com",
+            UserRole.Employee,
+            Guid.NewGuid());
+
+        var beforeAccept = DateTime.UtcNow;
+
+        // Act
+        user.AcceptInvitation("new-password-hash");
+
+        // Assert
+        Assert.Equal("new-password-hash", user.PasswordHash);
+        Assert.NotNull(user.InvitationAcceptedAt);
+        Assert.InRange(
+            user.InvitationAcceptedAt.Value,
+            beforeAccept,
+            DateTime.UtcNow);
+        Assert.Equal(2, user.SecurityVersion);
+    }
+
+    [Fact]
+    public void AcceptInvitation_WhenAlreadyAccepted_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var user = new User(
+            "Mevcut Kullanıcı",
+            "mevcut@example.com",
+            "existing-password-hash",
+            UserRole.Employee,
+            Guid.NewGuid());
+
+        // Act
+        var action = () =>
+            user.AcceptInvitation("new-password-hash");
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(action);
+        Assert.Equal("existing-password-hash", user.PasswordHash);
+        Assert.Equal(1, user.SecurityVersion);
     }
 
     [Fact]
