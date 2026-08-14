@@ -13,6 +13,13 @@ export type TicketPriority =
     | "High"
     | "Critical";
 
+export type SlaStatus =
+    | "OnTrack"
+    | "DueSoon"
+    | "Breached"
+    | "Met"
+    | "NotApplicable";
+
 export type TicketPriorityValue = 1 | 2 | 3 | 4;
 
 export type TicketStatusValue = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -54,6 +61,10 @@ export interface TicketDto {
     updatedAt: string | null;
     resolvedAt: string | null;
     closedAt: string | null;
+
+    slaDueAt: string;
+    slaStatus: SlaStatus;
+    slaRemainingMinutes: number | null;
 }
 
 export interface TicketHistoryDto {
@@ -102,6 +113,7 @@ export interface TicketListQuery {
     pageSize?: number;
     status?: TicketStatusValue;
     priority?: TicketPriorityValue;
+    slaStatus?: SlaStatus;
     assetId?: string;
     ticketNumber?: string;
     search?: string;

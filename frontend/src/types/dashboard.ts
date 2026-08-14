@@ -36,6 +36,8 @@ export interface DashboardDto {
     closedCount: number;
     cancelledCount: number;
     criticalActiveCount: number;
+    slaBreachedCount: number;
+    slaDueSoonCount: number;
     recentTickets: DashboardTicketDto[];
     admin: AdminDashboardDto | null;
 }

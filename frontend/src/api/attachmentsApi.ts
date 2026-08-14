@@ -77,7 +77,7 @@ export function deleteTicketAttachment(
     );
 }
 
-function getResponseFileName(
+export function getResponseFileName(
     contentDisposition: string | null
 ): string | null {
     if (!contentDisposition) {
@@ -103,7 +103,7 @@ function getResponseFileName(
     return fileNameMatch?.[1] ?? null;
 }
 
-function sanitizeFileName(fileName: string): string {
+export function sanitizeFileName(fileName: string): string {
     const pathSegments = fileName.split(/[\\/]/);
     const normalizedName = pathSegments.at(-1)?.trim() ?? "";
     const invalidCharacters = '<>:"|?*';

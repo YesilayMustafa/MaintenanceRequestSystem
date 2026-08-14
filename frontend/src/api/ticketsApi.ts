@@ -62,6 +62,10 @@ export function getTickets(
         searchParams.set("priority", String(query.priority));
     }
 
+    if (query.slaStatus) {
+        searchParams.set("slaStatus", query.slaStatus);
+    }
+
     if (query.assetId) {
         searchParams.set("assetId", query.assetId);
     }

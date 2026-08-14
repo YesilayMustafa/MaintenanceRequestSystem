@@ -18,6 +18,7 @@ import { TicketDetailsPage } from "../pages/TicketDetailsPage";
 import { UsersPage } from "../pages/UsersPage";
 import { NotificationsPage } from "../pages/NotificationsPage";
 import { AssetMaintenanceHistoryPage } from "../pages/AssetMaintenanceHistoryPage";
+import { ReportsPage } from "../pages/ReportsPage";
 
 const adminRoles = ["Admin"] as const;
 
@@ -83,6 +84,14 @@ export function AppRoutes() {
                     element={
                         <RoleRoute allowedRoles={[...adminRoles]}>
                             <AuditLogsPage />
+                        </RoleRoute>
+                    }
+                />
+                <Route
+                    path="/reports"
+                    element={
+                        <RoleRoute allowedRoles={[...adminRoles]}>
+                            <ReportsPage />
                         </RoleRoute>
                     }
                 />
