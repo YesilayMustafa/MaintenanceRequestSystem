@@ -52,6 +52,14 @@ public sealed class TicketRepository : ITicketRepository
                         ticket.Priority == query.Priority.Value);
         }
 
+        if (query.SlaStatus.HasValue)
+        {
+            ticketQuery = ApplySlaStatusFilter(
+                ticketQuery,
+                query.SlaStatus.Value,
+                DateTime.UtcNow);
+        }
+
         if (query.AssetId.HasValue)
         {
             ticketQuery =
@@ -330,5 +338,48 @@ public sealed class TicketRepository : ITicketRepository
             .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("%", "\\%", StringComparison.Ordinal)
             .Replace("_", "\\_", StringComparison.Ordinal);
+    }
+
+    private static IQueryable<Ticket> ApplySlaStatusFilter(
+        IQueryable<Ticket> query,
+        SlaStatus status,
+        DateTime utcNow)
+    {
+        return status switch
+        {
+            SlaStatus.NotApplicable => query.Where(ticket =>
+                ticket.Status == TicketStatus.Cancelled),
+
+            SlaStatus.Met => query.Where(ticket =>
+                (ticket.Status == TicketStatus.Resolved ||
+                 ticket.Status == TicketStatus.Closed) &&
+                (ticket.ResolvedAt ?? ticket.ClosedAt) <= ticket.SlaDueAt),
+
+            SlaStatus.Breached => query.Where(ticket =>
+                ticket.Status != TicketStatus.Cancelled &&
+                (((ticket.Status == TicketStatus.Resolved ||
+                   ticket.Status == TicketStatus.Closed) &&
+                  (ticket.ResolvedAt ?? ticket.ClosedAt) > ticket.SlaDueAt) ||
+                 (ticket.Status != TicketStatus.Resolved &&
+                  ticket.Status != TicketStatus.Closed &&
+                  ticket.SlaDueAt < utcNow))),
+
+            SlaStatus.DueSoon => query.Where(ticket =>
+                ticket.Status != TicketStatus.Resolved &&
+                ticket.Status != TicketStatus.Closed &&
+                ticket.Status != TicketStatus.Cancelled &&
+                ticket.SlaDueAt >= utcNow &&
+                utcNow >= ticket.SlaDueAt -
+                    (ticket.SlaDueAt - ticket.CreatedAt) * 0.2),
+
+            SlaStatus.OnTrack => query.Where(ticket =>
+                ticket.Status != TicketStatus.Resolved &&
+                ticket.Status != TicketStatus.Closed &&
+                ticket.Status != TicketStatus.Cancelled &&
+                utcNow < ticket.SlaDueAt -
+                    (ticket.SlaDueAt - ticket.CreatedAt) * 0.2),
+
+            _ => query.Where(_ => false)
+        };
     }
 }

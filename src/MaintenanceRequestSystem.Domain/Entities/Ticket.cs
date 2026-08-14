@@ -1,6 +1,7 @@
 ﻿using MaintenanceRequestSystem.Domain.Enums;
 
 using MaintenanceRequestSystem.Domain.ValueObjects;
+using MaintenanceRequestSystem.Domain.Services;
 
 namespace MaintenanceRequestSystem.Domain.Entities;
 
@@ -29,7 +30,8 @@ public sealed class Ticket
         Guid createdByUserId,
         string title,
         string description,
-        TicketPriority priority)
+        TicketPriority priority,
+        TimeSpan? slaTarget = null)
         : this(
             ticketNumber,
             assetId,
@@ -37,7 +39,8 @@ public sealed class Ticket
             createdByUserId,
             title,
             description,
-            priority)
+            priority,
+            slaTarget)
     {
     }
 
@@ -48,7 +51,8 @@ public sealed class Ticket
         Guid createdByUserId,
         string title,
         string description,
-        TicketPriority priority)
+        TicketPriority priority,
+        TimeSpan? slaTarget = null)
     {
         var normalizedTitle =
             NormalizeTitle(title);
@@ -74,6 +78,8 @@ public sealed class Ticket
         Priority = priority;
         Status = TicketStatus.Open;
         CreatedAt = DateTime.UtcNow;
+        SlaDueAt = CreatedAt + EnsureValidSlaTarget(
+            slaTarget ?? TicketSlaTargets.GetDefault(priority));
     }
 
     public Guid Id { get; private set; }
@@ -115,6 +121,8 @@ public sealed class Ticket
     public DateTime? ResolvedAt { get; private set; }
 
     public DateTime? ClosedAt { get; private set; }
+
+    public DateTime SlaDueAt { get; private set; }
 
     /// <summary>
     /// Talebin soft delete ile pasifleştirilip pasifleştirilmediğini belirtir.
@@ -494,6 +502,26 @@ public sealed class Ticket
         TicketPriority newPriority,
         Guid performedByUserId)
     {
+        if (!Enum.IsDefined(
+                typeof(TicketPriority),
+                newPriority))
+        {
+            throw new ArgumentException(
+                "Geçerli bir talep önceliği gereklidir.",
+                nameof(newPriority));
+        }
+
+        ChangePriority(
+            newPriority,
+            performedByUserId,
+            TicketSlaTargets.GetDefault(newPriority));
+    }
+
+    public void ChangePriority(
+        TicketPriority newPriority,
+        Guid performedByUserId,
+        TimeSpan slaTarget)
+    {
         EnsureValidPerformedByUserId(
             performedByUserId);
 
@@ -523,7 +551,20 @@ public sealed class Ticket
         }
 
         Priority = newPriority;
+        SlaDueAt = CreatedAt + EnsureValidSlaTarget(slaTarget);
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static TimeSpan EnsureValidSlaTarget(TimeSpan slaTarget)
+    {
+        if (slaTarget <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(slaTarget),
+                "SLA hedef süresi sıfırdan büyük olmalıdır.");
+        }
+
+        return slaTarget;
     }
 
     public void ChangeCategory(

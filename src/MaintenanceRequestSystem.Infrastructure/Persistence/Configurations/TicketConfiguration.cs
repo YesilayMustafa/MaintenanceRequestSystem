@@ -87,11 +87,17 @@ public sealed class TicketConfiguration
         builder.Property(ticket => ticket.ClosedAt)
             .HasColumnName("closed_at");
 
+        builder.Property(ticket => ticket.SlaDueAt)
+            .HasColumnName("sla_due_at")
+            .IsRequired();
+
         builder.HasIndex(ticket => ticket.Status);
 
         builder.HasIndex(ticket => ticket.Priority);
 
         builder.HasIndex(ticket => ticket.CreatedAt);
+
+        builder.HasIndex(ticket => ticket.SlaDueAt);
 
         builder.HasIndex(ticket => ticket.AssetId);
 

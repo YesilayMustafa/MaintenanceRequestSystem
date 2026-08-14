@@ -5,6 +5,7 @@ using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Application.Sla.Models;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
 
@@ -15,19 +16,22 @@ public sealed class TicketCreationService : ITicketCreationService
     private readonly IUserRepository _userRepository;
     private readonly ITicketNumberGenerator _ticketNumberGenerator;
     private readonly ITicketCategoryRepository _categoryRepository;
+    private readonly SlaOptions _slaOptions;
 
     public TicketCreationService(
         ITicketRepository ticketRepository,
         IAssetRepository assetRepository,
         IUserRepository userRepository,
         ITicketNumberGenerator ticketNumberGenerator,
-        ITicketCategoryRepository categoryRepository)
+        ITicketCategoryRepository categoryRepository,
+        SlaOptions? slaOptions = null)
     {
         _ticketRepository = ticketRepository;
         _assetRepository = assetRepository;
         _userRepository = userRepository;
         _ticketNumberGenerator = ticketNumberGenerator;
         _categoryRepository = categoryRepository;
+        _slaOptions = slaOptions ?? new SlaOptions();
     }
 
     /// <summary>
@@ -115,7 +119,8 @@ public sealed class TicketCreationService : ITicketCreationService
             createdByUserId,
             request.Title,
             request.Description,
-            request.Priority);
+            request.Priority,
+            _slaOptions.GetTarget(request.Priority));
 
         await _ticketRepository.AddAsync(
             ticket,

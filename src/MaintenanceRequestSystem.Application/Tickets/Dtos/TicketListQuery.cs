@@ -14,6 +14,8 @@ public sealed class TicketListQuery
 
     public TicketPriority? Priority { get; init; }
 
+    public SlaStatus? SlaStatus { get; init; }
+
     public Guid? AssetId { get; init; }
 
     public string? TicketNumber { get; init; }
