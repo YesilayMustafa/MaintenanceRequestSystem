@@ -12,7 +12,7 @@ public sealed partial class TicketManagementIntegrationTests
     public async Task Attachments_EmployeeOwnTicket_CanUploadListAndDownload()
     {
         var setup = await CreateTicketSetupAsync();
-        var content = new byte[] { 1, 2, 3, 4 };
+        var content = ValidPdfContent();
 
         var (response, responseBody) = await UploadAttachmentAsync(
             setup.EmployeeToken,
@@ -83,7 +83,7 @@ public sealed partial class TicketManagementIntegrationTests
             setup.Ticket.Id,
             "photo.png",
             "image/png",
-            new byte[] { 10, 20, 30 });
+            ValidPngContent());
 
         Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
 
@@ -105,7 +105,7 @@ public sealed partial class TicketManagementIntegrationTests
             setup.Ticket.Id,
             "admin-check.pdf",
             "application/pdf",
-            new byte[] { 1, 2 });
+            ValidPdfContent());
         var attachment = JsonSerializer.Deserialize<TicketAttachmentDto>(
             responseBody,
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -136,6 +136,20 @@ public sealed partial class TicketManagementIntegrationTests
             "script.exe",
             "application/octet-stream",
             new byte[] { 1 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_WithInvalidFileSignature_ReturnsBadRequest()
+    {
+        var setup = await CreateTicketSetupAsync();
+        var (response, _) = await UploadAttachmentAsync(
+            setup.EmployeeToken,
+            setup.Ticket.Id,
+            "fake.pdf",
+            "application/pdf",
+            [1, 2, 3, 4]);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -194,7 +208,7 @@ public sealed partial class TicketManagementIntegrationTests
             setup.Ticket.Id,
             "delete-me.pdf",
             "application/pdf",
-            new byte[] { 1 });
+            ValidPdfContent());
         var attachment = JsonSerializer.Deserialize<TicketAttachmentDto>(
             responseBody,
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -218,7 +232,7 @@ public sealed partial class TicketManagementIntegrationTests
             setup.Ticket.Id,
             "admin-upload.pdf",
             "application/pdf",
-            new byte[] { 1 });
+            ValidPdfContent());
         var attachment = JsonSerializer.Deserialize<TicketAttachmentDto>(
             responseBody,
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -258,5 +272,15 @@ public sealed partial class TicketManagementIntegrationTests
         var body = await response.Content.ReadAsStringAsync();
 
         return (response, body);
+    }
+
+    private static byte[] ValidPdfContent()
+    {
+        return [0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37];
+    }
+
+    private static byte[] ValidPngContent()
+    {
+        return [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     }
 }

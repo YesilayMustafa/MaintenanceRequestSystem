@@ -101,6 +101,14 @@ public sealed partial class TicketManagementIntegrationTests
         Assert.Equal(
             System.Net.HttpStatusCode.BadRequest,
             (await _client.SendAsync(invalidRangeRequest)).StatusCode);
+
+        using var nonUtcRequest = CreateAuthorizedRequest(
+            HttpMethod.Get,
+            "/api/tickets?createdFrom=2026-08-13T00%3A00%3A00",
+            setup.AdminToken);
+        Assert.Equal(
+            System.Net.HttpStatusCode.BadRequest,
+            (await _client.SendAsync(nonUtcRequest)).StatusCode);
     }
 
     [Fact]

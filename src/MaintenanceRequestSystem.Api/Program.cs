@@ -72,6 +72,23 @@ _ = app.Services.GetRequiredService<AccountLifecycleSettings>();
 
 app.UseExceptionHandler();
 
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.TryAdd(
+            "X-Content-Type-Options",
+            "nosniff");
+        context.Response.Headers.TryAdd(
+            "Referrer-Policy",
+            "no-referrer");
+
+        return Task.CompletedTask;
+    });
+
+    await next(context);
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

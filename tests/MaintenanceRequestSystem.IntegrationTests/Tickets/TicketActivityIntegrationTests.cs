@@ -81,7 +81,7 @@ public sealed partial class TicketManagementIntegrationTests
             setup.Ticket.Id,
             "timeline.pdf",
             "application/pdf",
-            [1, 2, 3]);
+            ValidPdfContent());
         Assert.Equal(HttpStatusCode.Created, attachmentResponse.StatusCode);
         using var priorityRequest = CreateAuthorizedRequest(
             HttpMethod.Patch,

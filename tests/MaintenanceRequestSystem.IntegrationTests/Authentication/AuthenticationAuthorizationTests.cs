@@ -6,7 +6,13 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using MaintenanceRequestSystem.Application.Authentication.Dtos;
 using MaintenanceRequestSystem.Application.Departments.Dtos;
+using MaintenanceRequestSystem.Application.Users.Dtos;
+using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.IntegrationTests.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace MaintenanceRequestSystem.IntegrationTests.Authentication;
 
@@ -14,10 +20,12 @@ public sealed class AuthenticationAuthorizationTests
     : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public AuthenticationAuthorizationTests(
         CustomWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
     [Fact]
@@ -96,6 +104,36 @@ public sealed class AuthenticationAuthorizationTests
     }
 
     [Fact]
+    public async Task ChangeDepartmentStatus_WithTechnicianToken_ReturnsForbidden()
+    {
+        var adminToken = await LoginAsync(
+            CustomWebApplicationFactory.AdminEmail,
+            CustomWebApplicationFactory.AdminPassword);
+        var department = await CreateDepartmentAsync(adminToken);
+        var technician = await CreateTechnicianAsync(
+            adminToken,
+            department.Id);
+        var technicianToken = await LoginAsync(
+            technician.Email,
+            technician.Password);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/departments/{department.Id}/status");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            technicianToken);
+        request.Content = JsonContent.Create(
+            new ChangeDepartmentStatusRequest
+            {
+                IsActive = false
+            });
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetDepartments_WithoutToken_ReturnsUnauthorized()
     {
         // Act
@@ -106,6 +144,72 @@ public sealed class AuthenticationAuthorizationTests
         Assert.Equal(
             HttpStatusCode.Unauthorized,
             response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApiResponse_IncludesLowRiskSecurityHeaders()
+    {
+        var response = await _client.GetAsync("/api/departments");
+
+        Assert.Equal(
+            "nosniff",
+            response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal(
+            "no-referrer",
+            response.Headers.GetValues("Referrer-Policy").Single());
+    }
+
+    [Fact]
+    public async Task CorsPreflight_WithConfiguredOrigin_AllowsOrigin()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Options,
+            "/api/departments");
+        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(
+            "http://localhost:5173",
+            response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+    }
+
+    [Fact]
+    public async Task CorsPreflight_WithUnconfiguredOrigin_DoesNotAllowOrigin()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Options,
+            "/api/departments");
+        request.Headers.Add("Origin", "https://untrusted.example");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [Fact]
+    public void JwtBearerOptions_UseValidatedProductionWiring()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var options = scope.ServiceProvider
+            .GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
+            .Get(JwtBearerDefaults.AuthenticationScheme);
+        var validation = options.TokenValidationParameters;
+
+        Assert.True(validation.ValidateIssuerSigningKey);
+        Assert.True(validation.ValidateIssuer);
+        Assert.True(validation.ValidateAudience);
+        Assert.True(validation.ValidateLifetime);
+        Assert.True(validation.RequireExpirationTime);
+        Assert.True(validation.RequireSignedTokens);
+        Assert.NotNull(validation.IssuerSigningKey);
+        Assert.True(validation.IssuerSigningKey.KeySize >= 256);
+        Assert.Contains(
+            SecurityAlgorithms.HmacSha256,
+            validation.ValidAlgorithms);
+        Assert.NotNull(options.Events.OnTokenValidated);
     }
 
     [Fact]
@@ -289,4 +393,36 @@ public sealed class AuthenticationAuthorizationTests
 
         return department;
     }
+
+    private async Task<CreatedTechnician> CreateTechnicianAsync(
+        string adminToken,
+        Guid departmentId)
+    {
+        var email = $"security-tech-{Guid.NewGuid():N}@example.com";
+        const string password = "SecurityTech123!";
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/users");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            adminToken);
+        request.Content = JsonContent.Create(
+            new CreateUserRequest
+            {
+                FullName = "Security Teknik Personeli",
+                Email = email,
+                Password = password,
+                Role = UserRole.Technician,
+                DepartmentId = departmentId
+            });
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        return new CreatedTechnician(email, password);
+    }
+
+    private sealed record CreatedTechnician(
+        string Email,
+        string Password);
 }

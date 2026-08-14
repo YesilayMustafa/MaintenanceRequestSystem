@@ -1,5 +1,6 @@
 using MaintenanceRequestSystem.Application.AuditLogs.Dtos;
 using MaintenanceRequestSystem.Application.AuditLogs.Interfaces;
+using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Common.Models;
 using MaintenanceRequestSystem.Application.TicketAttachments.Interfaces;
 using MaintenanceRequestSystem.Application.TicketAttachments.Models;
@@ -39,7 +40,8 @@ public sealed class TicketAttachmentServiceTests
             new FakeAuditLogService(),
             new AttachmentSettings());
 
-        await using var content = new MemoryStream([1, 2, 3]);
+        await using var content = new MemoryStream(
+            [0x25, 0x50, 0x44, 0x46, 0x2D, 0x31]);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.UploadAsync(
@@ -56,11 +58,53 @@ public sealed class TicketAttachmentServiceTests
         Assert.Equal(storage.StorageKey, storage.DeletedStorageKey);
     }
 
+    [Fact]
+    public async Task UploadAsync_WhenFileSignatureIsInvalid_RejectsBeforeStorage()
+    {
+        var user = new User(
+            "Test Çalışanı",
+            "attachment-signature@example.com",
+            "password-hash",
+            UserRole.Employee,
+            Guid.NewGuid());
+        var ticket = new Ticket(
+            "REQ-2026-000002",
+            Guid.NewGuid(),
+            user.Id,
+            "Dosya imza testi",
+            "Dosya imzası doğrulama testi.",
+            TicketPriority.Medium);
+        var storage = new FakeAttachmentStorage();
+        var service = new TicketAttachmentService(
+            new FailingAttachmentRepository(),
+            new FakeTicketRepository(ticket),
+            new FakeUserRepository(user),
+            storage,
+            new FakeAuditLogService(),
+            new AttachmentSettings());
+        await using var content = new MemoryStream([1, 2, 3]);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UploadAsync(
+                ticket.Id,
+                user.Id,
+                UserRole.Employee,
+                new AttachmentUpload(
+                    content,
+                    "fake.pdf",
+                    "application/pdf",
+                    content.Length)));
+
+        Assert.Equal(0, storage.SaveCallCount);
+    }
+
     private sealed class FakeAttachmentStorage : IAttachmentStorage
     {
         public string StorageKey { get; } = $"{Guid.NewGuid():N}.pdf";
 
         public int DeleteCallCount { get; private set; }
+
+        public int SaveCallCount { get; private set; }
 
         public string? DeletedStorageKey { get; private set; }
 
@@ -69,6 +113,7 @@ public sealed class TicketAttachmentServiceTests
             string extension,
             CancellationToken cancellationToken = default)
         {
+            SaveCallCount++;
             return Task.FromResult(StorageKey);
         }
 

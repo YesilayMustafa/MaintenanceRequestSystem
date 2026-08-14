@@ -12,6 +12,11 @@ namespace MaintenanceRequestSystem.Application.TicketAttachments.Services;
 
 public sealed class TicketAttachmentService : ITicketAttachmentService
 {
+    private static readonly byte[] JpegSignature = [0xFF, 0xD8, 0xFF];
+
+    private static readonly byte[] PngSignature =
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
     private static readonly IReadOnlyDictionary<string, string> ContentTypeByExtension =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -88,6 +93,10 @@ public sealed class TicketAttachmentService : ITicketAttachmentService
         }
 
         var (fileName, extension, contentType) = ValidateUpload(upload);
+        await EnsureValidFileSignatureAsync(
+            upload.Content,
+            extension,
+            cancellationToken);
 
         var attachmentCount = await _attachmentRepository.CountByTicketIdAsync(
             ticketId,
@@ -314,6 +323,65 @@ public sealed class TicketAttachmentService : ITicketAttachmentService
         }
 
         return (fileName, extension, contentType);
+    }
+
+    private static async Task EnsureValidFileSignatureAsync(
+        Stream content,
+        string extension,
+        CancellationToken cancellationToken)
+    {
+        if (!content.CanSeek)
+        {
+            throw new RequestValidationException(
+                "Dosya içeriği güvenli biçimde doğrulanamadı.");
+        }
+
+        var originalPosition = content.Position;
+        var header = new byte[12];
+        var bytesRead = 0;
+
+        try
+        {
+            while (bytesRead < header.Length)
+            {
+                var read = await content.ReadAsync(
+                    header.AsMemory(bytesRead),
+                    cancellationToken);
+
+                if (read == 0)
+                {
+                    break;
+                }
+
+                bytesRead += read;
+            }
+        }
+        finally
+        {
+            content.Position = originalPosition;
+        }
+
+        var signature = header.AsSpan(0, bytesRead);
+        var isValid = extension switch
+        {
+            ".jpg" or ".jpeg" =>
+                signature.StartsWith(JpegSignature),
+            ".png" =>
+                signature.StartsWith(PngSignature),
+            ".webp" =>
+                signature.Length >= 12 &&
+                signature[..4].SequenceEqual("RIFF"u8) &&
+                signature[8..12].SequenceEqual("WEBP"u8),
+            ".pdf" =>
+                signature.StartsWith("%PDF-"u8),
+            _ => false
+        };
+
+        if (!isValid)
+        {
+            throw new RequestValidationException(
+                "Dosya içeriği uzantısıyla uyumlu değil.");
+        }
     }
 
     private static string NormalizeFileName(string fileName)

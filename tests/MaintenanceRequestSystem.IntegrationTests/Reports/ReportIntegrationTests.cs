@@ -102,6 +102,14 @@ public sealed class ReportIntegrationTests
         var response = await _client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        using var nonUtcRequest = AuthorizedRequest(
+            "/api/reports/overview" +
+            "?createdFrom=2026-08-14T00%3A00%3A00",
+            token);
+        var nonUtcResponse = await _client.SendAsync(nonUtcRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, nonUtcResponse.StatusCode);
     }
 
     [Fact]
