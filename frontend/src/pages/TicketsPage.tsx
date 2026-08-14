@@ -16,6 +16,8 @@ import {
     TicketPriorityBadge,
     TicketStatusBadge,
 } from "../components/TicketBadges";
+import { SlaBadge } from "../components/SlaBadge";
+import { formatSlaRemainingTime } from "../utils/sla";
 
 import type { AssetDto } from "../types/assets";
 import type { TicketCategoryDto } from "../types/categories";
@@ -24,6 +26,7 @@ import type { PagedResult } from "../types/pagination";
 import type {
     TicketDto,
     TicketPriorityValue,
+    SlaStatus,
     TicketSortBy,
     TicketStatusValue,
 } from "../types/tickets";
@@ -34,6 +37,7 @@ interface TicketFilters {
     search: string;
     status: TicketStatusValue | "";
     priority: TicketPriorityValue | "";
+    slaStatus: SlaStatus | "";
     assetId: string;
     categoryId: string;
     createdByUserId: string;
@@ -48,6 +52,7 @@ const initialFilters: TicketFilters = {
     search: "",
     status: "",
     priority: "",
+    slaStatus: "",
     assetId: "",
     categoryId: "",
     createdByUserId: "",
@@ -78,6 +83,14 @@ const priorityOptions: Array<{
     { label: "Medium", value: 2 },
     { label: "High", value: 3 },
     { label: "Critical", value: 4 },
+];
+
+const slaOptions: Array<{ label: string; value: SlaStatus }> = [
+    { label: "Süre İçinde", value: "OnTrack" },
+    { label: "Süre Yaklaşıyor", value: "DueSoon" },
+    { label: "SLA Aşıldı", value: "Breached" },
+    { label: "SLA Karşılandı", value: "Met" },
+    { label: "Uygulanamaz", value: "NotApplicable" },
 ];
 
 const sortOptions: Array<{
@@ -213,6 +226,7 @@ export function TicketsPage() {
                     pageSize,
                     status: appliedFilters.status || undefined,
                     priority: appliedFilters.priority || undefined,
+                    slaStatus: appliedFilters.slaStatus || undefined,
                     assetId: appliedFilters.assetId || undefined,
                     ticketNumber:
                         appliedFilters.ticketNumber.trim() || undefined,
@@ -402,6 +416,25 @@ export function TicketsPage() {
                             >
                                 <option value="">Tümü</option>
                                 {priorityOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="ticket-sla-filter">SLA</label>
+                            <select
+                                id="ticket-sla-filter"
+                                value={draftFilters.slaStatus}
+                                onChange={(event) => updateDraftFilter(
+                                    "slaStatus",
+                                    event.target.value as SlaStatus | ""
+                                )}
+                            >
+                                <option value="">Tümü</option>
+                                {slaOptions.map((option) => (
                                     <option key={option.value} value={option.value}>
                                         {option.label}
                                     </option>
@@ -687,6 +720,7 @@ export function TicketsPage() {
                                 <th>Kategori</th>
                                 <th>Durum</th>
                                 <th>Öncelik</th>
+                                <th>SLA</th>
                                 <th>Cihaz</th>
                                 <th>Oluşturan</th>
                                 <th>Teknisyen</th>
@@ -720,6 +754,22 @@ export function TicketsPage() {
                                         <TicketPriorityBadge
                                             priority={ticket.priority}
                                         />
+                                    </td>
+                                    <td>
+                                        <div className="sla-table-cell">
+                                            <SlaBadge status={ticket.slaStatus} />
+                                            {formatSlaRemainingTime(
+                                                ticket.slaStatus,
+                                                ticket.slaRemainingMinutes
+                                            ) && (
+                                                <span className="sla-remaining">
+                                                    {formatSlaRemainingTime(
+                                                        ticket.slaStatus,
+                                                        ticket.slaRemainingMinutes
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td>{ticket.assetName}</td>
                                     <td>{ticket.createdByFullName}</td>

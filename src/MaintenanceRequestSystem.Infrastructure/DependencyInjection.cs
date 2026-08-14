@@ -29,8 +29,13 @@ using MaintenanceRequestSystem.Application.TicketAttachments.Interfaces;
 using MaintenanceRequestSystem.Application.TicketAttachments.Models;
 using MaintenanceRequestSystem.Application.TicketAttachments.Services;
 using MaintenanceRequestSystem.Infrastructure.Attachments;
+using MaintenanceRequestSystem.Application.Sla.Models;
+using MaintenanceRequestSystem.Application.Reports.Interfaces;
+using MaintenanceRequestSystem.Application.Reports.Services;
 using MaintenanceRequestSystem.Application.Notifications.Interfaces;
 using MaintenanceRequestSystem.Application.Notifications.Services;
+using MaintenanceRequestSystem.Application.TicketActivity.Interfaces;
+using MaintenanceRequestSystem.Application.TicketActivity.Services;
 
 namespace MaintenanceRequestSystem.Infrastructure;
 
@@ -57,6 +62,13 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAssetRepository, AssetRepository>();
         services.AddScoped<IAssetService, AssetService>();
+
+        services.AddSingleton(CreateSlaOptions(configuration));
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IReportRepository, ReportRepository>();
+        services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<ITicketActivityRepository, TicketActivityRepository>();
+        services.AddScoped<ITicketActivityService, TicketActivityService>();
         services.AddScoped<
             IAssetMaintenanceHistoryRepository,
             AssetMaintenanceHistoryRepository>();
@@ -214,6 +226,24 @@ public static class DependencyInjection
                 contentTypes.Select(value => value.Trim().ToLowerInvariant()),
                 StringComparer.OrdinalIgnoreCase)
         };
+    }
+
+    private static SlaOptions CreateSlaOptions(IConfiguration configuration)
+    {
+        var options = configuration
+            .GetSection(SlaOptions.SectionName)
+            .Get<SlaOptions>() ?? new SlaOptions();
+
+        if (options.CriticalHours <= 0 ||
+            options.HighHours <= 0 ||
+            options.MediumHours <= 0 ||
+            options.LowHours <= 0)
+        {
+            throw new InvalidOperationException(
+                "SLA hedef süreleri sıfırdan büyük olmalıdır.");
+        }
+
+        return options;
     }
 
     private static void AddAccountLifecycleConfiguration(

@@ -116,6 +116,8 @@ function SummaryCards({ dashboard, role }: SummaryCardsProps) {
             ["Bekleyen", dashboard.waitingCount, "Dış aksiyon bekleyen"],
             ["Çözülen", dashboard.resolvedCount, "Çözümü tamamlanan"],
             ["Kritik Aktif", dashboard.criticalActiveCount, "Öncelikli müdahale gereken"],
+            ["SLA Aşılan", dashboard.slaBreachedCount, "Hedef süresi geçen"],
+            ["Süresi Yaklaşan", dashboard.slaDueSoonCount, "SLA hedefinin son bölümünde"],
         ] as const
         : [
             ["Toplam", dashboard.totalCount, "Kapsamınızdaki tüm talepler"],
@@ -124,6 +126,8 @@ function SummaryCards({ dashboard, role }: SummaryCardsProps) {
             ["Bekleyen", dashboard.waitingCount, "Dış aksiyon bekleyen"],
             ["Çözülen", dashboard.resolvedCount, "Kapatılmayı bekleyen"],
             ["Kritik Aktif", dashboard.criticalActiveCount, "Öncelikli müdahale gereken"],
+            ["SLA Aşılan", dashboard.slaBreachedCount, "Hedef süresi geçen"],
+            ["Süresi Yaklaşan", dashboard.slaDueSoonCount, "SLA hedefinin son bölümünde"],
         ] as const;
 
     return (

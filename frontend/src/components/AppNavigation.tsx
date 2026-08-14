@@ -22,6 +22,7 @@ export function AppNavigation() {
                         marker="A"
                         label="Audit Logları"
                     />
+                    <NavItem to="/reports" marker="R" label="Raporlar" />
                 </>
             )}
 

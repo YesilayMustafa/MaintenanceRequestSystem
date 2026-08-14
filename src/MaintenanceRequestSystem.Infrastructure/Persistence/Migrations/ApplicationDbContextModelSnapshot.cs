@@ -340,6 +340,10 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("resolved_at");
 
+                    b.Property<DateTime>("SlaDueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sla_due_at");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -382,6 +386,8 @@ namespace MaintenanceRequestSystem.Infrastructure.Persistence.Migrations
                     b.HasIndex("IsDeleted");
 
                     b.HasIndex("Priority");
+
+                    b.HasIndex("SlaDueAt");
 
                     b.HasIndex("Status");
 

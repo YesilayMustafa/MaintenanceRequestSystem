@@ -32,6 +32,7 @@ interface TicketAttachmentsProps {
     ticketStatus: TicketStatus;
     token: string;
     user: AuthenticatedUser;
+    onChanged?: () => void;
 }
 
 export function TicketAttachments({
@@ -39,6 +40,7 @@ export function TicketAttachments({
     ticketStatus,
     token,
     user,
+    onChanged,
 }: TicketAttachmentsProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [attachments, setAttachments] = useState<TicketAttachmentDto[]>([]);
@@ -131,6 +133,7 @@ export function TicketAttachments({
             ]);
             setSelectedFile(null);
             setStatusMessage("Dosya başarıyla yüklendi.");
+            onChanged?.();
 
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
@@ -202,6 +205,7 @@ export function TicketAttachments({
                 )
             );
             setStatusMessage("Dosya başarıyla silindi.");
+            onChanged?.();
         } catch (error) {
             setError(getErrorMessage(
                 error,

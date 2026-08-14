@@ -7,6 +7,7 @@ using MaintenanceRequestSystem.Application.Notifications.Interfaces;
 using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Domain.Entities;
 using MaintenanceRequestSystem.Domain.Enums;
+using MaintenanceRequestSystem.Application.Sla.Models;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
 
@@ -17,17 +18,20 @@ public sealed class TicketAdministrationService
     private readonly IUserRepository _userRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationWriter _notificationWriter;
+    private readonly SlaOptions _slaOptions;
 
     public TicketAdministrationService(
         ITicketRepository ticketRepository,
         IUserRepository userRepository,
         IAuditLogService auditLogService,
-        INotificationWriter? notificationWriter = null)
+        INotificationWriter? notificationWriter = null,
+        SlaOptions? slaOptions = null)
     {
         _ticketRepository = ticketRepository;
         _userRepository = userRepository;
         _auditLogService = auditLogService;
         _notificationWriter = notificationWriter ?? new NullNotificationWriter();
+        _slaOptions = slaOptions ?? new SlaOptions();
     }
 
     /// <summary>
@@ -98,7 +102,8 @@ public sealed class TicketAdministrationService
 
         ticket.ChangePriority(
             request.Priority,
-            currentUserId);
+            currentUserId,
+            _slaOptions.GetTarget(request.Priority));
 
         await _auditLogService.AddAsync(
             currentUserId,

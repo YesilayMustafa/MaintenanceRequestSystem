@@ -43,6 +43,8 @@ public sealed class DashboardRepository : IDashboardRepository
             currentUserId,
             currentUserRole);
 
+        var utcNow = DateTime.UtcNow;
+
         var counts =
             await scopedTickets
                 .GroupBy(_ => 1)
@@ -59,7 +61,22 @@ public sealed class DashboardRepository : IDashboardRepository
                     group.Count(ticket => ticket.Status == TicketStatus.Cancelled),
                     group.Count(ticket =>
                         ticket.Priority == TicketPriority.Critical &&
-                        ActiveStatuses.Contains(ticket.Status))))
+                        ActiveStatuses.Contains(ticket.Status)),
+                    group.Count(ticket =>
+                        ticket.Status != TicketStatus.Cancelled &&
+                        (((ticket.Status == TicketStatus.Resolved ||
+                           ticket.Status == TicketStatus.Closed) &&
+                          (ticket.ResolvedAt ?? ticket.ClosedAt) > ticket.SlaDueAt) ||
+                         (ticket.Status != TicketStatus.Resolved &&
+                          ticket.Status != TicketStatus.Closed &&
+                          ticket.SlaDueAt < utcNow))),
+                    group.Count(ticket =>
+                        ticket.Status != TicketStatus.Resolved &&
+                        ticket.Status != TicketStatus.Closed &&
+                        ticket.Status != TicketStatus.Cancelled &&
+                        ticket.SlaDueAt >= utcNow &&
+                        (ticket.SlaDueAt - utcNow).TotalSeconds <=
+                            (ticket.SlaDueAt - ticket.CreatedAt).TotalSeconds * 0.2)))
                 .SingleOrDefaultAsync(cancellationToken)
             ?? DashboardCounts.Empty;
 
@@ -109,7 +126,9 @@ public sealed class DashboardRepository : IDashboardRepository
             counts.CancelledCount,
             counts.CriticalActiveCount,
             recentTickets,
-            admin);
+            admin,
+            counts.SlaBreachedCount,
+            counts.SlaDueSoonCount);
     }
 
     private async Task<AdminDashboardDto> GetAdminDashboardAsync(
@@ -157,10 +176,12 @@ public sealed class DashboardRepository : IDashboardRepository
         int ResolvedCount,
         int ClosedCount,
         int CancelledCount,
-        int CriticalActiveCount)
+        int CriticalActiveCount,
+        int SlaBreachedCount,
+        int SlaDueSoonCount)
     {
         internal static DashboardCounts Empty { get; } =
-            new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     private sealed record DashboardTicketRow(

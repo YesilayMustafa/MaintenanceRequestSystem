@@ -23,8 +23,11 @@ import {
     TicketPriorityBadge,
     TicketStatusBadge,
 } from "../components/TicketBadges";
+import { SlaBadge } from "../components/SlaBadge";
+import { formatSlaRemainingTime } from "../utils/sla";
 import { TicketActions } from "../features/tickets/TicketActions";
 import { TicketAttachments } from "../features/tickets/TicketAttachments";
+import { TicketActivityTimeline } from "../features/tickets/TicketActivityTimeline";
 
 import type { TicketCommentDto } from "../types/comments";
 import type {
@@ -45,6 +48,7 @@ export function TicketDetailsPage() {
     const [commentContent, setCommentContent] = useState("");
     const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
     const [commentError, setCommentError] = useState<string | null>(null);
+    const [activityVersion, setActivityVersion] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -122,6 +126,7 @@ export function TicketDetailsPage() {
             ]);
 
             setCommentContent("");
+            setActivityVersion((current) => current + 1);
         } catch (error) {
             if (error instanceof ApiError) {
                 setCommentError(error.message);
@@ -148,6 +153,7 @@ export function TicketDetailsPage() {
             await getTicketHistory(token, id);
 
         setHistory(updatedHistory);
+        setActivityVersion((current) => current + 1);
     }
 
     if (isLoading) {
@@ -248,12 +254,58 @@ export function TicketDetailsPage() {
                         </dl>
                     </section>
 
+                    <section className="card sla-detail-card" aria-labelledby="sla-title">
+                        <div className="card-header">
+                            <div>
+                                <h2 id="sla-title">SLA Bilgisi</h2>
+                                <p className="page-description">
+                                    Talebin önceliğine göre belirlenen hedef süre.
+                                </p>
+                            </div>
+                            <SlaBadge status={ticket.slaStatus} />
+                        </div>
+                        <dl className="definition-grid">
+                            <div className="definition-item">
+                                <dt>SLA Hedef Zamanı</dt>
+                                <dd>
+                                    {new Date(ticket.slaDueAt)
+                                        .toLocaleString("tr-TR")}
+                                </dd>
+                            </div>
+                            {formatSlaRemainingTime(
+                                ticket.slaStatus,
+                                ticket.slaRemainingMinutes
+                            ) && (
+                                <div className="definition-item">
+                                    <dt>Süre Durumu</dt>
+                                    <dd>
+                                        {formatSlaRemainingTime(
+                                            ticket.slaStatus,
+                                            ticket.slaRemainingMinutes
+                                        )}
+                                    </dd>
+                                </div>
+                            )}
+                        </dl>
+                    </section>
+
                     {user && token && (
                         <TicketAttachments
                             ticketId={ticket.id}
                             ticketStatus={ticket.status}
                             token={token}
                             user={user}
+                            onChanged={() => setActivityVersion(
+                                (current) => current + 1
+                            )}
+                        />
+                    )}
+
+                    {token && (
+                        <TicketActivityTimeline
+                            ticketId={ticket.id}
+                            token={token}
+                            refreshKey={activityVersion}
                         />
                     )}
 

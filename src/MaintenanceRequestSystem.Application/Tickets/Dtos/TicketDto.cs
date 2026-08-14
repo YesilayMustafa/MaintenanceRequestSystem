@@ -21,4 +21,7 @@ public sealed record TicketDto(
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     DateTime? ResolvedAt,
-    DateTime? ClosedAt);
+    DateTime? ClosedAt,
+    DateTime SlaDueAt,
+    string SlaStatus,
+    long? SlaRemainingMinutes);

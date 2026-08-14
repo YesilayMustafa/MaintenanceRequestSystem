@@ -1,5 +1,6 @@
 ﻿using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Application.Sla.Services;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
 
@@ -25,6 +26,8 @@ internal static class TicketDtoMapper
         var ticketCreator =
             createdByUser ?? ticket.CreatedByUser;
 
+        var sla = TicketSlaCalculator.Calculate(ticket, DateTime.UtcNow);
+
         return new TicketDto(
             ticket.Id,
             ticket.TicketNumber,
@@ -46,6 +49,9 @@ internal static class TicketDtoMapper
             ticket.CreatedAt,
             ticket.UpdatedAt,
             ticket.ResolvedAt,
-            ticket.ClosedAt);
+            ticket.ClosedAt,
+            ticket.SlaDueAt,
+            sla.Status.ToString(),
+            sla.RemainingMinutes);
     }
 }

@@ -12,4 +12,6 @@ public sealed record DashboardDto(
     int CancelledCount,
     int CriticalActiveCount,
     IReadOnlyList<DashboardTicketDto> RecentTickets,
-    AdminDashboardDto? Admin);
+    AdminDashboardDto? Admin,
+    int SlaBreachedCount = 0,
+    int SlaDueSoonCount = 0);
