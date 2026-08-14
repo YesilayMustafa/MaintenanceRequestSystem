@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text;
 using MaintenanceRequestSystem.Application.Authentication.Dtos;
 using MaintenanceRequestSystem.Application.Reports.Dtos;
 using MaintenanceRequestSystem.Domain.Entities;
@@ -118,13 +119,44 @@ public sealed class ReportIntegrationTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/csv", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("utf-16", response.Content.Headers.ContentType?.CharSet);
         Assert.NotNull(response.Content.Headers.ContentDisposition);
         var bytes = await response.Content.ReadAsByteArrayAsync();
-        Assert.Equal([0xEF, 0xBB, 0xBF], bytes[..3]);
-        var csv = await response.Content.ReadAsStringAsync();
-        Assert.StartsWith("\"TicketNumber\"", csv, StringComparison.Ordinal);
-        Assert.Contains("\"SlaStatus\"", csv, StringComparison.Ordinal);
-        Assert.Contains("\"'=1+1,\nTest\"", csv, StringComparison.Ordinal);
+        var preamble = Encoding.Unicode.GetPreamble();
+        Assert.Equal([0xFF, 0xFE], preamble);
+        Assert.Equal(preamble, bytes[..preamble.Length]);
+        var csv = new UnicodeEncoding(
+            bigEndian: false,
+            byteOrderMark: false,
+            throwOnInvalidBytes: true)
+            .GetString(bytes[preamble.Length..]);
+        Assert.DoesNotContain('\uFEFF', csv);
+        Assert.StartsWith("sep=;\r\n", csv, StringComparison.Ordinal);
+        using var reader = new StringReader(csv);
+        Assert.Equal("sep=;", reader.ReadLine());
+        var header = reader.ReadLine();
+        Assert.NotNull(header);
+        Assert.Equal(
+            "\"Talep No\";\"Başlık\";\"Kategori\";\"Durum\";" +
+            "\"Öncelik\";\"Açılış\";\"SLA Son\";\"SLA\";" +
+            "\"Oluşturan\";\"Departman\";\"Teknisyen\"",
+            header);
+        Assert.Contains(
+            "\"'=1+1; Ağ Yönetimi\nTest\"",
+            csv,
+            StringComparison.Ordinal);
+        Assert.Contains("Ağ", csv, StringComparison.Ordinal);
+        Assert.Contains("Diğer", csv, StringComparison.Ordinal);
+        Assert.Contains("Çalışanı", csv, StringComparison.Ordinal);
+        Assert.Contains("Yönetimi", csv, StringComparison.Ordinal);
+        Assert.Contains("SLA Aşıldı", csv, StringComparison.Ordinal);
+        Assert.Contains("SLA Karşılandı", csv, StringComparison.Ordinal);
+        Assert.Matches(
+            "\"\\d{2}\\.\\d{2}\\.\\d{4} \\d{2}:\\d{2} UTC\"",
+            csv);
+        Assert.DoesNotMatch(
+            "\"\\d{4}-\\d{2}-\\d{2}T",
+            csv);
     }
 
     [Fact]
@@ -151,7 +183,7 @@ public sealed class ReportIntegrationTests
         var department = await context.Departments.FindAsync(employee.DepartmentId);
         Assert.NotNull(department);
         var technician = new User(
-            "Rapor Teknik Personeli",
+            "Rapor Çalışanı",
             $"report-tech-{Guid.NewGuid():N}@example.com",
             "integration-test-hash",
             UserRole.Technician,
@@ -166,7 +198,7 @@ public sealed class ReportIntegrationTests
             asset.Id,
             TicketCategory.OtherId,
             employee.Id,
-            "=1+1,\nTest",
+            "=1+1; Ağ Yönetimi\nTest",
             "CSV güvenlik testi.",
             TicketPriority.Critical);
         var resolvedMet = new Ticket(

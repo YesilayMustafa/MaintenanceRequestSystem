@@ -75,8 +75,8 @@ public sealed class DashboardRepository : IDashboardRepository
                         ticket.Status != TicketStatus.Closed &&
                         ticket.Status != TicketStatus.Cancelled &&
                         ticket.SlaDueAt >= utcNow &&
-                        utcNow >= ticket.SlaDueAt -
-                            (ticket.SlaDueAt - ticket.CreatedAt) * 0.2)))
+                        (ticket.SlaDueAt - utcNow).TotalSeconds <=
+                            (ticket.SlaDueAt - ticket.CreatedAt).TotalSeconds * 0.2)))
                 .SingleOrDefaultAsync(cancellationToken)
             ?? DashboardCounts.Empty;
 

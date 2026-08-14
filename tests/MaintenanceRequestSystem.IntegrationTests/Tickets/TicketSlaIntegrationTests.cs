@@ -56,12 +56,66 @@ public sealed partial class TicketManagementIntegrationTests
         Assert.Equal(1, technicianDashboard.SlaBreachedCount);
     }
 
+    [Fact]
+    public async Task Dashboard_WithEmployeeToken_ReturnsBreachedAndDueSoonCounts()
+    {
+        var setup = await CreateTicketSetupAsync();
+        var employee = await CreateEmployeeAsync(setup.AdminToken);
+        var employeeToken = await LoginAsync(employee.Email, employee.Password);
+        var breachedTicket = await CreateTicketAsync(
+            employeeToken,
+            setup.Ticket.AssetId,
+            "SLA ihlal dashboard talebi",
+            TicketPriority.High);
+        var dueSoonTicket = await CreateTicketAsync(
+            employeeToken,
+            setup.Ticket.AssetId,
+            "SLA yaklaşan dashboard talebi",
+            TicketPriority.High);
+        var utcNow = DateTime.UtcNow;
+        await SetSlaDueAtAsync(
+            breachedTicket.Id,
+            utcNow.AddMinutes(-5));
+        await SetSlaWindowAsync(
+            dueSoonTicket.Id,
+            utcNow.AddHours(-9),
+            utcNow.AddHours(1));
+
+        var dashboard = await GetDashboardAsync(employeeToken);
+
+        Assert.Equal(2, dashboard.TotalCount);
+        Assert.Equal(1, dashboard.SlaBreachedCount);
+        Assert.Equal(1, dashboard.SlaDueSoonCount);
+    }
+
     private async Task SetSlaDueAtAsync(Guid ticketId, DateTime slaDueAt)
     {
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var ticket = await context.Tickets.FindAsync(ticketId);
         Assert.NotNull(ticket);
+        typeof(Ticket)
+            .GetProperty(
+                nameof(Ticket.SlaDueAt),
+                BindingFlags.Instance | BindingFlags.Public)!
+            .SetValue(ticket, slaDueAt);
+        await context.SaveChangesAsync();
+    }
+
+    private async Task SetSlaWindowAsync(
+        Guid ticketId,
+        DateTime createdAt,
+        DateTime slaDueAt)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var ticket = await context.Tickets.FindAsync(ticketId);
+        Assert.NotNull(ticket);
+        typeof(Ticket)
+            .GetProperty(
+                nameof(Ticket.CreatedAt),
+                BindingFlags.Instance | BindingFlags.Public)!
+            .SetValue(ticket, createdAt);
         typeof(Ticket)
             .GetProperty(
                 nameof(Ticket.SlaDueAt),

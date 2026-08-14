@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Reports.Dtos;
@@ -47,35 +48,65 @@ public sealed class ReportService : IReportService
             utcNow,
             cancellationToken);
         var builder = new StringBuilder();
-        builder.AppendLine(string.Join(',', new[]
+        builder.AppendLine("sep=;");
+        builder.AppendLine(string.Join(';', new[]
         {
-            "TicketNumber", "Title", "Category", "Status", "Priority",
-            "CreatedAt", "SlaDueAt", "SlaStatus", "CreatedBy",
-            "Department", "AssignedTechnician"
+            "Talep No", "Başlık", "Kategori", "Durum", "Öncelik",
+            "Açılış", "SLA Son", "SLA", "Oluşturan", "Departman",
+            "Teknisyen"
         }.Select(EscapeCsv)));
 
         foreach (var row in rows)
         {
-            builder.AppendLine(string.Join(',', new[]
+            builder.AppendLine(string.Join(';', new[]
             {
                 row.TicketNumber,
                 row.Title,
                 row.Category,
                 row.Status,
                 row.Priority,
-                row.CreatedAt.ToString("O"),
-                row.SlaDueAt.ToString("O"),
-                row.SlaStatus,
+                FormatUtcDate(row.CreatedAt),
+                FormatUtcDate(row.SlaDueAt),
+                FormatSlaStatus(row.SlaStatus),
                 row.CreatedBy,
                 row.Department,
                 row.AssignedTechnician ?? string.Empty
             }.Select(EscapeCsv)));
         }
 
+        var encoding = new UnicodeEncoding(
+            bigEndian: false,
+            byteOrderMark: true);
+        var csvBytes = encoding.GetBytes(builder.ToString());
+        var preamble = encoding.GetPreamble();
+        var content = new byte[preamble.Length + csvBytes.Length];
+        preamble.CopyTo(content, 0);
+        csvBytes.CopyTo(content, preamble.Length);
+
         return new ReportCsvFile(
-            Encoding.UTF8.GetBytes("\uFEFF" + builder),
-            "text/csv; charset=utf-8",
+            content,
+            "text/csv; charset=utf-16",
             $"ticket-report-{utcNow:yyyy-MM-dd}.csv");
+    }
+
+    private static string FormatUtcDate(DateTime value)
+    {
+        return value.ToString(
+            "dd.MM.yyyy HH:mm 'UTC'",
+            CultureInfo.InvariantCulture);
+    }
+
+    private static string FormatSlaStatus(string value)
+    {
+        return value switch
+        {
+            nameof(SlaStatus.OnTrack) => "Süre İçinde",
+            nameof(SlaStatus.DueSoon) => "Süre Yaklaşıyor",
+            nameof(SlaStatus.Breached) => "SLA Aşıldı",
+            nameof(SlaStatus.Met) => "SLA Karşılandı",
+            nameof(SlaStatus.NotApplicable) => "Uygulanamaz",
+            _ => value
+        };
     }
 
     private static string EscapeCsv(string value)
