@@ -37,12 +37,9 @@ export function LoginPage() {
         <main className="login-page">
             <section className="login-card" aria-labelledby="login-title">
                 <div className="login-brand">
-                    <span className="login-brand-mark" aria-hidden="true">M</span>
+                    <span className="login-brand-mark" aria-hidden="true">MRS</span>
                     <h1 id="login-title">Maintenance Desk</h1>
-                    <p>
-                        Arıza ve bakım taleplerini yönetmek için hesabınızla
-                        giriş yapın.
-                    </p>
+                    <p>Bakım Talep Yönetimi</p>
                 </div>
 
                 {state?.message && (

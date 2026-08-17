@@ -52,7 +52,7 @@ export function AssetMaintenanceHistoryPage() {
         ["Çözülen", history.summary.resolvedTicketCount],
         ["Kapatılan", history.summary.closedTicketCount],
         ["Kritik", history.summary.criticalTicketCount],
-        ["Son Talep", history.summary.lastTicketCreatedAt ? formatDate(history.summary.lastTicketCreatedAt) : "—"],
+        ["Son Talep", history.summary.lastTicketCreatedAt ? formatSummaryDate(history.summary.lastTicketCreatedAt) : "—"],
     ];
 
     return (
@@ -69,8 +69,9 @@ export function AssetMaintenanceHistoryPage() {
 
             <section className="summary-grid" aria-label="Bakım geçmişi özeti">
                 {summaryCards.map(([label, value]) => (
-                    <article className="summary-card" key={label}>
-                        <span>{label}</span><strong>{value}</strong>
+                    <article className="summary-card maintenance-summary-card" key={label}>
+                        <span className="summary-label">{label}</span>
+                        <strong className="summary-value">{value}</strong>
                     </article>
                 ))}
             </section>
@@ -86,18 +87,17 @@ export function AssetMaintenanceHistoryPage() {
                 ) : (
                     <div className="table-container maintenance-history-table">
                         <table><thead><tr>
-                            <th>Talep</th><th>Kategori</th><th>Durum</th><th>Öncelik</th>
-                            <th>Oluşturan</th><th>Teknik Personel</th><th>Oluşturulma</th><th>Çözülme / Kapanma</th>
+                            <th>Talep</th><th>Durum</th><th>Öncelik</th>
+                            <th>Sorumlular</th><th>Açılış</th><th>Çözülme / Kapanma</th>
                         </tr></thead><tbody>
                             {history.tickets.items.map((ticket) => (
                                 <tr key={ticket.id}>
                                     <td><Link to={`/tickets/${ticket.id}`} className="table-link">{ticket.ticketNumber}</Link>
-                                        <span className="maintenance-ticket-title">{ticket.title}</span></td>
-                                    <td>{ticket.categoryName}</td>
+                                        <span className="maintenance-ticket-title">{ticket.title} · {ticket.categoryName}</span></td>
                                     <td><TicketStatusBadge status={ticket.status} /></td>
                                     <td><TicketPriorityBadge priority={ticket.priority} /></td>
-                                    <td>{ticket.createdByFullName}</td>
-                                    <td>{ticket.assignedTechnicianFullName ?? "Atanmadı"}</td>
+                                    <td>{ticket.createdByFullName}
+                                        <span className="ticket-cell-secondary">{ticket.assignedTechnicianFullName ?? "Teknisyen atanmadı"}</span></td>
                                     <td>{formatDate(ticket.createdAt)}</td>
                                     <td>{ticket.closedAt ? `Kapandı: ${formatDate(ticket.closedAt)}` : ticket.resolvedAt ? `Çözüldü: ${formatDate(ticket.resolvedAt)}` : "—"}</td>
                                 </tr>
@@ -121,6 +121,12 @@ export function AssetMaintenanceHistoryPage() {
 }
 
 function formatDate(value: string): string { return new Date(value).toLocaleString("tr-TR"); }
+function formatSummaryDate(value: string): string {
+    return new Intl.DateTimeFormat("tr-TR", {
+        dateStyle: "medium",
+        timeStyle: "short",
+    }).format(new Date(value));
+}
 function getErrorMessage(error: unknown, fallback: string): string {
     return error instanceof ApiError ? error.message : fallback;
 }

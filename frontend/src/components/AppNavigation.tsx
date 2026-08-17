@@ -1,33 +1,40 @@
 import { NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth";
+import { Icon, type IconName } from "./Icon";
 
-export function AppNavigation() {
+interface AppNavigationProps {
+    onNavigate?: () => void;
+}
+
+export function AppNavigation({ onNavigate }: AppNavigationProps) {
     const { user } = useAuth();
 
     return (
         <nav className="sidebar-nav" aria-label="Ana navigasyon">
-            <NavItem to="/dashboard" marker="G" label="Genel Bakış" />
-            <NavItem to="/tickets" marker="T" label="Talepler" />
-            <NavItem to="/assets" marker="C" label="Cihazlar" />
+            <p className="sidebar-section-label">Genel</p>
+            <NavItem to="/dashboard" icon="home" label="Genel Bakış" onNavigate={onNavigate} />
+            <NavItem to="/tickets" icon="ticket" label="Talepler" onNavigate={onNavigate} />
+            <NavItem to="/timeline" icon="calendar" label="Takvim" onNavigate={onNavigate} />
+            <NavItem to="/assets" icon="asset" label="Cihazlar" onNavigate={onNavigate} />
+            <NavItem to="/notifications" icon="bell" label="Bildirimler" onNavigate={onNavigate} />
 
             {user?.role === "Admin" && (
                 <>
                     <p className="sidebar-section-label">Yönetim</p>
-                    <NavItem to="/categories" marker="K" label="Kategoriler" />
-                    <NavItem to="/departments" marker="D" label="Departmanlar" />
-                    <NavItem to="/users" marker="K" label="Kullanıcılar" />
-                    <NavItem
-                        to="/audit-logs"
-                        marker="A"
-                        label="Audit Logları"
-                    />
-                    <NavItem to="/reports" marker="R" label="Raporlar" />
+                    <NavItem to="/reports" icon="chart" label="Raporlar" onNavigate={onNavigate} />
+                    <NavItem to="/users" icon="users" label="Kullanıcılar" onNavigate={onNavigate} />
+                    <NavItem to="/departments" icon="building" label="Departmanlar" onNavigate={onNavigate} />
+                    <NavItem to="/categories" icon="category" label="Kategoriler" onNavigate={onNavigate} />
+                    <NavItem to="/audit-logs" icon="audit" label="Audit Kayıtları" onNavigate={onNavigate} />
                 </>
             )}
 
             {user?.role !== "Admin" && (
-                <NavItem to="/departments" marker="D" label="Departmanlar" />
+                <>
+                    <p className="sidebar-section-label">Organizasyon</p>
+                    <NavItem to="/departments" icon="building" label="Departmanlar" onNavigate={onNavigate} />
+                </>
             )}
         </nav>
     );
@@ -35,21 +42,21 @@ export function AppNavigation() {
 
 interface NavItemProps {
     to: string;
-    marker: string;
+    icon: IconName;
     label: string;
+    onNavigate?: () => void;
 }
 
-function NavItem({ to, marker, label }: NavItemProps) {
+function NavItem({ to, icon, label, onNavigate }: NavItemProps) {
     return (
         <NavLink
             to={to}
+            onClick={onNavigate}
             className={({ isActive }) =>
                 `sidebar-link${isActive ? " sidebar-link-active" : ""}`
             }
         >
-            <span className="sidebar-link-marker" aria-hidden="true">
-                {marker}
-            </span>
+            <Icon name={icon} className="sidebar-link-icon" />
             <span>{label}</span>
         </NavLink>
     );

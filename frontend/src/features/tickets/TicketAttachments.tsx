@@ -217,7 +217,7 @@ export function TicketAttachments({
     }
 
     return (
-        <section className="card" aria-labelledby="attachments-title">
+        <section className="card ticket-attachments-card" aria-labelledby="attachments-title">
             <div className="card-header">
                 <div>
                     <h2 id="attachments-title">Ekler</h2>

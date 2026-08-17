@@ -3,6 +3,7 @@ import {
     useState,
     type SubmitEvent,
 } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { getCategories } from "../api/categoriesApi";
 import { getDepartments } from "../api/departmentsApi";
@@ -20,6 +21,7 @@ import type {
     ReportDistributionItemDto,
     ReportFilterQuery,
     ReportOverviewDto,
+    TechnicianPerformanceDto,
 } from "../types/reports";
 import type { UserDto } from "../types/users";
 
@@ -41,6 +43,7 @@ const emptyFilters: ReportFilters = {
 
 export function ReportsPage() {
     const { token } = useAuth();
+    const navigate = useNavigate();
     const [report, setReport] = useState<ReportOverviewDto | null>(null);
     const [categories, setCategories] = useState<TicketCategoryDto[]>([]);
     const [departments, setDepartments] = useState<DepartmentDto[]>([]);
@@ -292,43 +295,100 @@ export function ReportsPage() {
             {error && <p className="error-state" role="alert">{error}</p>}
 
             {!isLoading && !error && report && (
-                <ReportContent report={report} />
+                <ReportContent
+                    report={report}
+                    onDrillDown={(drillDown) => {
+                        const query = new URLSearchParams({
+                            ...getReportScope(filters),
+                            ...drillDown,
+                        });
+                        navigate(`/tickets?${query.toString()}`);
+                    }}
+                />
             )}
         </div>
     );
 }
 
-function ReportContent({ report }: { report: ReportOverviewDto }) {
-    const summaryCards = [
-        ["Toplam Talep", report.summary.totalTickets],
-        ["Aktif", report.summary.activeTickets],
-        ["Çözülen", report.summary.resolvedTickets],
-        ["Kapatılan", report.summary.closedTickets],
-        ["İptal", report.summary.cancelledTickets],
-        ["Kritik", report.summary.criticalTickets],
-        ["SLA Karşılanan", report.summary.slaMetCount],
-        ["SLA Aşılan", report.summary.slaBreachedCount],
-        ["SLA Uyum Oranı", `${formatNumber(report.summary.slaComplianceRate)}%`],
+function ReportContent({
+    report,
+    onDrillDown,
+}: {
+    report: ReportOverviewDto;
+    onDrillDown: (query: Record<string, string>) => void;
+}) {
+    const [selectedTechnician, setSelectedTechnician] =
+        useState<TechnicianPerformanceDto | null>(null);
+    const primarySummaryCards = [
+        ["Toplam Talep", report.summary.totalTickets, {}],
+        ["Aktif", report.summary.activeTickets, null],
+        ["Çözülen", report.summary.resolvedTickets, { status: "5" }],
+        ["Kritik", report.summary.criticalTickets, { priority: "4" }],
+        ["SLA Uyum Oranı", `${formatNumber(report.summary.slaComplianceRate)}%`, null],
     ] as const;
+    const secondarySummaryCards = [
+        ["Kapatılan", report.summary.closedTickets, { status: "6" }],
+        ["İptal", report.summary.cancelledTickets, { status: "7" }],
+        ["SLA Karşılanan", report.summary.slaMetCount, { slaStatus: "Met" }],
+        ["SLA Aşılan", report.summary.slaBreachedCount, { slaStatus: "Breached" }],
+    ] as const;
+    const maximumTrend = Math.max(
+        1,
+        ...report.dailyCreationTrend.map((item) => item.count)
+    );
 
     return (
         <>
             <section aria-labelledby="report-summary-title">
                 <h2 id="report-summary-title" className="visually-hidden">Rapor özeti</h2>
                 <div className="report-summary-grid">
-                    {summaryCards.map(([label, value]) => (
-                        <article className="summary-card" key={label}>
+                    {primarySummaryCards.map(([label, value, drillDown], index) => (
+                        <button
+                            type="button"
+                            className={`summary-card report-metric-card ${index === 4 ? "metric-success" : "metric-primary"}`}
+                            key={label}
+                            disabled={!drillDown}
+                            onClick={() => drillDown && onDrillDown(drillDown)}
+                        >
                             <span className="summary-label">{label}</span>
                             <strong className="summary-value">{value}</strong>
-                        </article>
+                        </button>
+                    ))}
+                </div>
+                <div className="report-summary-secondary">
+                    {secondarySummaryCards.map(([label, value, drillDown]) => (
+                        <button
+                            type="button"
+                            className="summary-card report-metric-card"
+                            key={label}
+                            onClick={() => onDrillDown(drillDown)}
+                        >
+                            <span className="summary-label">{label}</span>
+                            <strong className="summary-value">{value}</strong>
+                        </button>
                     ))}
                 </div>
             </section>
 
             <section className="report-distribution-grid" aria-label="Talep dağılımları">
-                <DistributionCard title="Duruma Göre" items={report.byStatus} />
-                <DistributionCard title="Önceliğe Göre" items={report.byPriority} />
-                <DistributionCard title="Kategoriye Göre" items={report.byCategory} />
+                <DistributionCard
+                    title="Duruma Göre"
+                    items={report.byStatus}
+                    getDrillDown={(key) => getStatusDrillDown(key)}
+                    onDrillDown={onDrillDown}
+                />
+                <DistributionCard
+                    title="Önceliğe Göre"
+                    items={report.byPriority}
+                    getDrillDown={(key) => getPriorityDrillDown(key)}
+                    onDrillDown={onDrillDown}
+                />
+                <DistributionCard
+                    title="Kategoriye Göre"
+                    items={report.byCategory}
+                    getDrillDown={(key) => ({ categoryId: key })}
+                    onDrillDown={onDrillDown}
+                />
             </section>
 
             <section className="card" aria-labelledby="report-trend-title">
@@ -338,9 +398,18 @@ function ReportContent({ report }: { report: ReportOverviewDto }) {
                 ) : (
                     <div className="trend-list">
                         {report.dailyCreationTrend.map((item) => (
-                            <div className="trend-item" key={item.date}>
+                            <div
+                                className="trend-item"
+                                key={item.date}
+                                title="UTC gün sınırı nedeniyle bu grafik doğrudan filtrelenmez."
+                            >
+                                <span
+                                    className="trend-bar"
+                                    style={{ height: `${Math.max(5, item.count / maximumTrend * 120)}px` }}
+                                    aria-hidden="true"
+                                />
+                                <strong>{item.count}</strong>
                                 <span>{formatDate(item.date)}</span>
-                                <strong>{item.count} talep</strong>
                             </div>
                         ))}
                     </div>
@@ -360,7 +429,18 @@ function ReportContent({ report }: { report: ReportOverviewDto }) {
                                 <th>SLA Aşılan</th><th>SLA Uyum Oranı</th>
                             </tr></thead>
                             <tbody>{report.technicianPerformance.map((item) => (
-                                <tr key={item.technicianId}>
+                                <tr
+                                    className="report-interactive-row"
+                                    key={item.technicianId}
+                                    tabIndex={0}
+                                    onClick={() => setSelectedTechnician(item)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            setSelectedTechnician(item);
+                                        }
+                                    }}
+                                >
                                     <td>{item.fullName}</td><td>{item.assignedCount}</td>
                                     <td>{item.activeCount}</td><td>{item.resolvedOrClosedCount}</td>
                                     <td>{item.slaMetCount}</td><td>{item.slaBreachedCount}</td>
@@ -371,6 +451,16 @@ function ReportContent({ report }: { report: ReportOverviewDto }) {
                     </div>
                 )}
             </section>
+
+            {selectedTechnician && (
+                <TechnicianDetailDrawer
+                    technician={selectedTechnician}
+                    onClose={() => setSelectedTechnician(null)}
+                    onViewTickets={() => onDrillDown({
+                        assignedTechnicianId: selectedTechnician.technicianId,
+                    })}
+                />
+            )}
         </>
     );
 }
@@ -378,9 +468,13 @@ function ReportContent({ report }: { report: ReportOverviewDto }) {
 function DistributionCard({
     title,
     items,
+    getDrillDown,
+    onDrillDown,
 }: {
     title: string;
     items: ReportDistributionItemDto[];
+    getDrillDown: (key: string) => Record<string, string> | null;
+    onDrillDown: (query: Record<string, string>) => void;
 }) {
     const maximum = Math.max(0, ...items.map((item) => item.count));
 
@@ -391,20 +485,150 @@ function DistributionCard({
                 <p className="empty-state">Veri bulunmuyor.</p>
             ) : (
                 <ul className="distribution-list">
-                    {items.map((item) => (
+                    {items.map((item) => {
+                        const drillDown = getDrillDown(item.key);
+
+                        return (
                         <li key={item.key}>
+                            <button
+                                type="button"
+                                className="distribution-action"
+                                disabled={!drillDown}
+                                onClick={() => drillDown && onDrillDown(drillDown)}
+                            >
                             <div className="distribution-label">
-                                <span>{item.label}</span><strong>{item.count}</strong>
+                                <span>{item.label}</span>
+                                <strong>{item.count}</strong>
                             </div>
                             <div className="distribution-track" aria-hidden="true">
                                 <span style={{ width: `${maximum ? item.count / maximum * 100 : 0}%` }} />
                             </div>
+                            </button>
                         </li>
-                    ))}
+                        );
+                    })}
                 </ul>
             )}
         </article>
     );
+}
+
+function TechnicianDetailDrawer({
+    technician,
+    onClose,
+    onViewTickets,
+}: {
+    technician: TechnicianPerformanceDto;
+    onClose: () => void;
+    onViewTickets: () => void;
+}) {
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                onClose();
+            }
+        }
+
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [onClose]);
+
+    return (
+        <div
+            className="detail-drawer-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) {
+                    onClose();
+                }
+            }}
+        >
+            <aside
+                className="detail-drawer technician-detail-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="technician-detail-title"
+            >
+                <header className="detail-drawer-header">
+                    <div>
+                        <span className="eyebrow">Teknik personel</span>
+                        <h2 id="technician-detail-title">{technician.fullName}</h2>
+                    </div>
+                    <button
+                        type="button"
+                        className="icon-button"
+                        aria-label="Detayı kapat"
+                        onClick={onClose}
+                    >
+                        ×
+                    </button>
+                </header>
+
+                <dl className="technician-metric-list">
+                    <DetailMetric label="Atanan" value={technician.assignedCount} />
+                    <DetailMetric label="Aktif" value={technician.activeCount} />
+                    <DetailMetric
+                        label="Çözülen/Kapatılan"
+                        value={technician.resolvedOrClosedCount}
+                    />
+                    <DetailMetric label="SLA Karşılanan" value={technician.slaMetCount} />
+                    <DetailMetric label="SLA Aşılan" value={technician.slaBreachedCount} />
+                    <DetailMetric
+                        label="SLA Uyum Oranı"
+                        value={`${formatNumber(technician.slaComplianceRate)}%`}
+                    />
+                </dl>
+
+                <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={onViewTickets}
+                >
+                    Taleplerini Gör
+                </button>
+            </aside>
+        </div>
+    );
+}
+
+function DetailMetric({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+        </div>
+    );
+}
+
+function getReportScope(filters: ReportFilters): Record<string, string> {
+    return Object.fromEntries(
+        Object.entries(filters).filter(([, value]) => value)
+    );
+}
+
+function getStatusDrillDown(key: string): Record<string, string> | null {
+    const values: Record<string, string> = {
+        Open: "1",
+        Assigned: "2",
+        InProgress: "3",
+        Waiting: "4",
+        Resolved: "5",
+        Closed: "6",
+        Cancelled: "7",
+    };
+
+    return values[key] ? { status: values[key] } : null;
+}
+
+function getPriorityDrillDown(key: string): Record<string, string> | null {
+    const values: Record<string, string> = {
+        Low: "1",
+        Medium: "2",
+        High: "3",
+        Critical: "4",
+    };
+
+    return values[key] ? { priority: values[key] } : null;
 }
 
 function DateFilter(props: {

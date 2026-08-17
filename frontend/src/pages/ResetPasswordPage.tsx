@@ -51,7 +51,7 @@ export function ResetPasswordPage() {
         <main className="login-page">
             <section className="login-card" aria-labelledby="reset-title">
                 <div className="login-brand">
-                    <span className="login-brand-mark" aria-hidden="true">M</span>
+                    <span className="login-brand-mark" aria-hidden="true">MRS</span>
                     <h1 id="reset-title">Yeni Şifre Belirleyin</h1>
                     <p>Hesabınız için yeni ve güvenli bir parola oluşturun.</p>
                 </div>

@@ -66,6 +66,14 @@ export function getTickets(
         searchParams.set("slaStatus", query.slaStatus);
     }
 
+    if (query.activeOnly) {
+        searchParams.set("activeOnly", "true");
+    }
+
+    if (query.unassignedOnly) {
+        searchParams.set("unassignedOnly", "true");
+    }
+
     if (query.assetId) {
         searchParams.set("assetId", query.assetId);
     }

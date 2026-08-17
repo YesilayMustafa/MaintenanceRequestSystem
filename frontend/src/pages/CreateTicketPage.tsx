@@ -246,6 +246,14 @@ export function CreateTicketPage() {
                     className="card form-card"
                     onSubmit={handleSubmit}
                 >
+                    <div className="card-header">
+                        <div>
+                            <h2>Talep Bilgileri</h2>
+                            <p className="page-description">
+                                Cihazı ve kategoriyi seçin, ihtiyacı açık ve anlaşılır biçimde açıklayın.
+                            </p>
+                        </div>
+                    </div>
                     <div className="form-grid">
                     <div className="form-group form-group-full">
                         <label htmlFor="asset-id">Cihaz</label>
@@ -354,10 +362,10 @@ export function CreateTicketPage() {
                             }
                             disabled={isSubmitting}
                         >
-                            <option value={1}>Low</option>
-                            <option value={2}>Medium</option>
-                            <option value={3}>High</option>
-                            <option value={4}>Critical</option>
+                            <option value={1}>Düşük</option>
+                            <option value={2}>Orta</option>
+                            <option value={3}>Yüksek</option>
+                            <option value={4}>Kritik</option>
                         </select>
                     </div>
 

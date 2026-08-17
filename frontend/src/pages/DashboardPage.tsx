@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { getDashboard } from "../api/dashboardApi";
 import { ApiError } from "../api/httpClient";
@@ -8,6 +8,8 @@ import {
     TicketPriorityBadge,
     TicketStatusBadge,
 } from "../components/TicketBadges";
+import { Icon, type IconName } from "../components/Icon";
+import { WeeklyTimelinePreview } from "../components/WeeklyTimelinePreview";
 
 import type { DashboardDto } from "../types/dashboard";
 import type { UserRole } from "../types/auth";
@@ -20,6 +22,7 @@ const roleDescriptions: Record<UserRole, string> = {
 
 export function DashboardPage() {
     const { token, user } = useAuth();
+    const navigate = useNavigate();
     const [dashboard, setDashboard] = useState<DashboardDto | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -70,7 +73,7 @@ export function DashboardPage() {
                     </p>
                 </div>
 
-                {user?.role === "Employee" && (
+                {user && (
                     <div className="page-header-actions">
                         <Link className="button button-primary" to="/tickets/new">
                             Yeni Talep Oluştur
@@ -89,11 +92,20 @@ export function DashboardPage() {
 
             {!isLoading && !error && dashboard && (
                 <>
-                    <SummaryCards dashboard={dashboard} role={user?.role} />
+                    <SummaryCards
+                        dashboard={dashboard}
+                        role={user?.role}
+                        onDrillDown={(query) => navigateToTickets(navigate, query)}
+                    />
 
                     {dashboard.admin && (
-                        <AdminOverview dashboard={dashboard.admin} />
+                        <AdminOverview
+                            dashboard={dashboard.admin}
+                            onDrillDown={(query) => navigateToTickets(navigate, query)}
+                        />
                     )}
+
+                    {token && <WeeklyTimelinePreview token={token} />}
 
                     <RecentTickets tickets={dashboard.recentTickets} />
                 </>
@@ -105,29 +117,30 @@ export function DashboardPage() {
 interface SummaryCardsProps {
     dashboard: DashboardDto;
     role: UserRole | undefined;
+    onDrillDown: (query: Record<string, string>) => void;
 }
 
-function SummaryCards({ dashboard, role }: SummaryCardsProps) {
+function SummaryCards({ dashboard, role, onDrillDown }: SummaryCardsProps) {
     const cards = role === "Technician"
         ? [
-            ["Toplam Atanan", dashboard.totalCount, "Kapsamınızdaki tüm talepler"],
-            ["Atanan", dashboard.assignedCount, "Henüz işleme alınmayan"],
-            ["İşlemde", dashboard.inProgressCount, "Üzerinde çalışılan"],
-            ["Bekleyen", dashboard.waitingCount, "Dış aksiyon bekleyen"],
-            ["Çözülen", dashboard.resolvedCount, "Çözümü tamamlanan"],
-            ["Kritik Aktif", dashboard.criticalActiveCount, "Öncelikli müdahale gereken"],
-            ["SLA Aşılan", dashboard.slaBreachedCount, "Hedef süresi geçen"],
-            ["Süresi Yaklaşan", dashboard.slaDueSoonCount, "SLA hedefinin son bölümünde"],
+            ["Toplam Atanan", dashboard.totalCount, "Kapsamınızdaki tüm talepler", "ticket", "metric-primary", {}],
+            ["İşlemde", dashboard.inProgressCount, "Üzerinde çalışılan", "activity", "metric-progress", { status: "3" }],
+            ["Kritik Aktif", dashboard.criticalActiveCount, "Öncelikli müdahale gereken", "alert", "metric-warning", { activeOnly: "true", priority: "4" }],
+            ["SLA Aşılan", dashboard.slaBreachedCount, "Hedef süresi geçen", "clock", "metric-danger", { slaStatus: "Breached" }],
+            ["Bekleyen", dashboard.waitingCount, "Dış aksiyon bekleyen", "clock", "metric-warning", { status: "4" }],
+            ["Çözülen", dashboard.resolvedCount, "Çözümü tamamlanan", "check", "metric-success", { status: "5" }],
+            ["Süresi Yaklaşan", dashboard.slaDueSoonCount, "SLA hedefinin son bölümünde", "alert", "metric-warning", { slaStatus: "DueSoon" }],
+            ["Atanan", dashboard.assignedCount, "Henüz işleme alınmayan", "users", "metric-neutral", { status: "2" }],
         ] as const
         : [
-            ["Toplam", dashboard.totalCount, "Kapsamınızdaki tüm talepler"],
-            ["Aktif Süreç", dashboard.activeCount, "Open–Resolved arası süreçler"],
-            ["İşlemde", dashboard.inProgressCount, "Üzerinde çalışılan"],
-            ["Bekleyen", dashboard.waitingCount, "Dış aksiyon bekleyen"],
-            ["Çözülen", dashboard.resolvedCount, "Kapatılmayı bekleyen"],
-            ["Kritik Aktif", dashboard.criticalActiveCount, "Öncelikli müdahale gereken"],
-            ["SLA Aşılan", dashboard.slaBreachedCount, "Hedef süresi geçen"],
-            ["Süresi Yaklaşan", dashboard.slaDueSoonCount, "SLA hedefinin son bölümünde"],
+            [role === "Admin" ? "Aktif Süreç" : "Toplam", role === "Admin" ? dashboard.activeCount : dashboard.totalCount, "Kapsamınızdaki güncel talepler", "ticket", "metric-primary", role === "Admin" ? { activeOnly: "true" } : {}],
+            ["İşlemde", dashboard.inProgressCount, "Üzerinde çalışılan", "activity", "metric-progress", { status: "3" }],
+            ["Kritik Aktif", dashboard.criticalActiveCount, "Öncelikli müdahale gereken", "alert", "metric-warning", { activeOnly: "true", priority: "4" }],
+            ["SLA Aşılan", dashboard.slaBreachedCount, "Hedef süresi geçen", "clock", "metric-danger", { slaStatus: "Breached" }],
+            ["Bekleyen", dashboard.waitingCount, "Dış aksiyon bekleyen", "clock", "metric-warning", { status: "4" }],
+            ["Çözülen", dashboard.resolvedCount, "Kapatılmayı bekleyen", "check", "metric-success", { status: "5" }],
+            ["Süresi Yaklaşan", dashboard.slaDueSoonCount, "SLA hedefinin son bölümünde", "alert", "metric-warning", { slaStatus: "DueSoon" }],
+            ["Toplam", dashboard.totalCount, "Kapsamınızdaki tüm talepler", "chart", "metric-neutral", {}],
         ] as const;
 
     return (
@@ -136,12 +149,25 @@ function SummaryCards({ dashboard, role }: SummaryCardsProps) {
                 Talep özeti
             </h2>
             <div className="summary-grid">
-                {cards.map(([label, value, description]) => (
-                    <article className="summary-card" key={label}>
-                        <span className="summary-label">{label}</span>
+                {cards.map(([label, value, description, icon, tone, query]) => (
+                    <button
+                        type="button"
+                        className={`summary-card dashboard-metric-card ${tone}`}
+                        key={`${label}-${description}`}
+                        aria-label={`${label}: ${value}. İlgili talepleri aç.`}
+                        onClick={() => onDrillDown(
+                            query as Record<string, string>
+                        )}
+                    >
+                        <div className="metric-card-header">
+                            <span className="summary-label">{label}</span>
+                            <span className="metric-icon">
+                                <Icon name={icon as IconName} size={17} />
+                            </span>
+                        </div>
                         <strong className="summary-value">{value}</strong>
                         <span className="summary-description">{description}</span>
-                    </article>
+                    </button>
                 ))}
             </div>
         </section>
@@ -150,12 +176,26 @@ function SummaryCards({ dashboard, role }: SummaryCardsProps) {
 
 interface AdminOverviewProps {
     dashboard: NonNullable<DashboardDto["admin"]>;
+    onDrillDown: (query: Record<string, string>) => void;
 }
 
-function AdminOverview({ dashboard }: AdminOverviewProps) {
+function AdminOverview({ dashboard, onDrillDown }: AdminOverviewProps) {
+    const maximumWorkload = Math.max(
+        1,
+        ...dashboard.technicianWorkload.map((item) => item.activeTicketCount)
+    );
+
     return (
         <section className="dashboard-admin-grid" aria-label="Yönetici özeti">
-            <article className="card attention-card">
+            <button
+                type="button"
+                className="card attention-card dashboard-attention-card"
+                aria-label={`Atama bekleyen ${dashboard.unassignedOpenCount} talebi aç.`}
+                onClick={() => onDrillDown({
+                    status: "1",
+                    unassignedOnly: "true",
+                })}
+            >
                 <span className="summary-label">Atama Bekleyen Talepler</span>
                 <strong className="summary-value">
                     {dashboard.unassignedOpenCount}
@@ -163,7 +203,7 @@ function AdminOverview({ dashboard }: AdminOverviewProps) {
                 <p className="page-description">
                     Açık durumda ve henüz teknik personele atanmamış talepler.
                 </p>
-            </article>
+            </button>
 
             <article className="card" aria-labelledby="workload-title">
                 <div className="card-header">
@@ -184,6 +224,11 @@ function AdminOverview({ dashboard }: AdminOverviewProps) {
                         {dashboard.technicianWorkload.map((technician) => (
                             <li key={technician.technicianId}>
                                 <span>{technician.fullName}</span>
+                                <span className="workload-track" aria-hidden="true">
+                                    <span style={{
+                                        width: `${technician.activeTicketCount / maximumWorkload * 100}%`,
+                                    }} />
+                                </span>
                                 <strong>
                                     {technician.activeTicketCount} aktif talep
                                 </strong>
@@ -222,11 +267,9 @@ function RecentTickets({ tickets }: RecentTicketsProps) {
                     <table>
                         <thead>
                             <tr>
-                                <th>Talep No</th>
-                                <th>Başlık</th>
+                                <th>Talep</th>
                                 <th>Durum</th>
                                 <th>Öncelik</th>
-                                <th>Cihaz</th>
                                 <th>Teknik Personel</th>
                                 <th>Oluşturulma</th>
                             </tr>
@@ -234,25 +277,19 @@ function RecentTickets({ tickets }: RecentTicketsProps) {
                         <tbody>
                             {tickets.map((ticket) => (
                                 <tr key={ticket.id}>
-                                    <td>
+                                    <td className="ticket-primary-cell">
                                         <Link
                                             className="table-link ticket-number"
                                             to={`/tickets/${ticket.id}`}
                                         >
                                             {ticket.ticketNumber}
                                         </Link>
-                                    </td>
-                                    <td>
-                                        <Link
-                                            className="table-link"
-                                            to={`/tickets/${ticket.id}`}
-                                        >
-                                            {ticket.title}
-                                        </Link>
+                                        <span className="ticket-cell-secondary">
+                                            {ticket.title} · {ticket.assetName}
+                                        </span>
                                     </td>
                                     <td><TicketStatusBadge status={ticket.status} /></td>
                                     <td><TicketPriorityBadge priority={ticket.priority} /></td>
-                                    <td>{ticket.assetName}</td>
                                     <td>
                                         {ticket.assignedTechnicianFullName ?? (
                                             <span className="muted-text">Atanmadı</span>
@@ -271,4 +308,14 @@ function RecentTickets({ tickets }: RecentTicketsProps) {
 
 function formatDate(value: string): string {
     return new Date(value).toLocaleString("tr-TR");
+}
+
+function navigateToTickets(
+    navigate: ReturnType<typeof useNavigate>,
+    query: Record<string, string>
+) {
+    const searchParams = new URLSearchParams(query);
+    navigate(searchParams.size > 0
+        ? `/tickets?${searchParams.toString()}`
+        : "/tickets");
 }
