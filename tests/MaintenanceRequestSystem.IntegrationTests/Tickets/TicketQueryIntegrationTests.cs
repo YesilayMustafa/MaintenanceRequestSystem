@@ -271,6 +271,131 @@ public sealed partial class TicketManagementIntegrationTests
     }
 
     [Fact]
+    public async Task GetTickets_WithActiveOnly_ReturnsDashboardActiveStatuses()
+    {
+        var resolvedSetup =
+            await CreateResolvedTicketSetupAsync();
+
+        var closedSetup =
+            await CreateClosedTicketSetupAsync();
+
+        var result =
+            await GetPagedTicketsAsync(
+                resolvedSetup.AdminToken,
+                "/api/tickets?activeOnly=true" +
+                "&pageNumber=1&pageSize=100");
+
+        Assert.Contains(
+            result.Items,
+            ticket => ticket.Id == resolvedSetup.Ticket.Id);
+
+        Assert.DoesNotContain(
+            result.Items,
+            ticket => ticket.Id == closedSetup.Ticket.Id);
+
+        Assert.All(
+            result.Items,
+            ticket => Assert.Contains(
+                ticket.Status,
+                new[]
+                {
+                    "Open",
+                    "Assigned",
+                    "InProgress",
+                    "Waiting",
+                    "Resolved"
+                }));
+    }
+
+    [Fact]
+    public async Task GetTickets_WithActiveOnlyAndCriticalPriority_ReturnsExactMatches()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var criticalTicket =
+            await CreateTicketAsync(
+                setup.EmployeeToken,
+                setup.Ticket.AssetId,
+                "Kritik aktif talep",
+                TicketPriority.Critical);
+
+        var nonCriticalTicket =
+            await CreateTicketAsync(
+                setup.EmployeeToken,
+                setup.Ticket.AssetId,
+                "Orta öncelikli aktif talep",
+                TicketPriority.Medium);
+
+        var result =
+            await GetPagedTicketsAsync(
+                setup.AdminToken,
+                "/api/tickets?activeOnly=true&priority=4" +
+                "&pageNumber=1&pageSize=100");
+
+        Assert.Contains(
+            result.Items,
+            ticket => ticket.Id == criticalTicket.Id);
+
+        Assert.DoesNotContain(
+            result.Items,
+            ticket => ticket.Id == nonCriticalTicket.Id);
+
+        Assert.All(
+            result.Items,
+            ticket => Assert.Equal("Critical", ticket.Priority));
+    }
+
+    [Fact]
+    public async Task GetTickets_WithUnassignedOnly_PreservesRoleScope()
+    {
+        var setup =
+            await CreateTicketSetupAsync();
+
+        var technician =
+            await CreateTechnicianAsync(setup.AdminToken);
+
+        await AssignTicketAsync(
+            setup.AdminToken,
+            setup.Ticket.Id,
+            technician.Id);
+
+        var unassignedTicket =
+            await CreateTicketAsync(
+                setup.EmployeeToken,
+                setup.Ticket.AssetId,
+                "Atama bekleyen talep",
+                TicketPriority.Medium);
+
+        var adminResult =
+            await GetPagedTicketsAsync(
+                setup.AdminToken,
+                "/api/tickets?unassignedOnly=true" +
+                "&pageNumber=1&pageSize=100");
+
+        Assert.Contains(
+            adminResult.Items,
+            ticket => ticket.Id == unassignedTicket.Id);
+
+        Assert.DoesNotContain(
+            adminResult.Items,
+            ticket => ticket.Id == setup.Ticket.Id);
+
+        var technicianToken =
+            await LoginAsync(
+                technician.Email,
+                technician.Password);
+
+        var technicianResult =
+            await GetPagedTicketsAsync(
+                technicianToken,
+                "/api/tickets?unassignedOnly=true" +
+                "&pageNumber=1&pageSize=100");
+
+        Assert.Empty(technicianResult.Items);
+    }
+
+    [Fact]
     public async Task GetTickets_WithEmployeeToken_ReturnsOnlyOwnTickets()
     {
         var adminToken =

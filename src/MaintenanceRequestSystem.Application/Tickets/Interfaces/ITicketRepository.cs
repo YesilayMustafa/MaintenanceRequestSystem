@@ -22,6 +22,13 @@ public interface ITicketRepository
     TicketListQuery query,
     CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Ticket>> GetTimelineAsync(
+        Guid currentUserId,
+        UserRole currentUserRole,
+        TicketTimelineQuery query,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Belirtilen talebe ait durum geçmişini kronolojik olarak getirir.
     /// </summary>

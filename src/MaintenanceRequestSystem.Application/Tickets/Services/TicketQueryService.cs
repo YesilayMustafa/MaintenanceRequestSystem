@@ -3,6 +3,7 @@ using MaintenanceRequestSystem.Application.Common.Models;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
+using MaintenanceRequestSystem.Application.Sla.Services;
 using MaintenanceRequestSystem.Domain.Enums;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
@@ -64,6 +65,47 @@ public sealed class TicketQueryService : ITicketQueryService
             query.PageSize,
             result.TotalCount,
             totalPages);
+    }
+
+    public async Task<IReadOnlyList<TicketTimelineItemDto>> GetTimelineAsync(
+        Guid currentUserId,
+        UserRole currentUserRole,
+        TicketTimelineQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        TicketServiceGuards.EnsureValidId(
+            currentUserId,
+            "Geçerli bir kullanıcı kimliği gereklidir.");
+
+        ArgumentNullException.ThrowIfNull(query);
+        ValidateTimelineQuery(currentUserRole, query);
+
+        var utcNow = DateTime.UtcNow;
+        var tickets = await _ticketRepository.GetTimelineAsync(
+            currentUserId,
+            currentUserRole,
+            query,
+            utcNow,
+            cancellationToken);
+
+        return tickets.Select(ticket =>
+        {
+            var sla = TicketSlaCalculator.Calculate(ticket, utcNow);
+
+            return new TicketTimelineItemDto(
+                ticket.Id,
+                ticket.TicketNumber,
+                ticket.Title,
+                ticket.Status.ToString(),
+                ticket.Priority.ToString(),
+                ticket.CategoryId,
+                ticket.Category.Name,
+                ticket.AssignedTechnicianId,
+                ticket.AssignedTechnician?.FullName,
+                ticket.CreatedAt,
+                ticket.SlaDueAt,
+                sla.Status.ToString());
+        }).ToList();
     }
 
     /// <summary>
@@ -310,6 +352,59 @@ public sealed class TicketQueryService : ITicketQueryService
                 "Sıralama alanı createdAt, title, priority, status, " +
                 "ticketNumber veya category olmalıdır.");
         }
+    }
+
+    private static void ValidateTimelineQuery(
+        UserRole currentUserRole,
+        TicketTimelineQuery query)
+    {
+        TicketServiceGuards.EnsureSupportedRole(currentUserRole);
+
+        ValidateUtcDate(query.From, "Başlangıç tarihi");
+        ValidateUtcDate(query.To, "Bitiş tarihi");
+
+        if (query.From == default || query.To == default)
+        {
+            throw new RequestValidationException(
+                "Başlangıç ve bitiş tarihleri gereklidir.");
+        }
+
+        if (query.From > query.To)
+        {
+            throw new RequestValidationException(
+                "Başlangıç tarihi bitiş tarihinden sonra olamaz.");
+        }
+
+        if (query.To - query.From > TimeSpan.FromDays(31))
+        {
+            throw new RequestValidationException(
+                "Zaman çizelgesi aralığı en fazla 31 gün olabilir.");
+        }
+
+        if (query.Status.HasValue && !Enum.IsDefined(query.Status.Value))
+        {
+            throw new RequestValidationException("Geçersiz talep durumu.");
+        }
+
+        if (query.Priority.HasValue && !Enum.IsDefined(query.Priority.Value))
+        {
+            throw new RequestValidationException("Geçersiz talep önceliği.");
+        }
+
+        if (query.SlaStatus.HasValue && !Enum.IsDefined(query.SlaStatus.Value))
+        {
+            throw new RequestValidationException("Geçersiz SLA durumu.");
+        }
+
+        ValidateOptionalId(
+            query.CategoryId,
+            "Geçerli bir kategori kimliği gereklidir.");
+        ValidateOptionalId(
+            query.AssignedTechnicianId,
+            "Geçerli bir teknik personel kimliği gereklidir.");
+        ValidateOptionalId(
+            query.DepartmentId,
+            "Geçerli bir departman kimliği gereklidir.");
     }
 
     private static void ValidateOptionalId(Guid? id, string message)

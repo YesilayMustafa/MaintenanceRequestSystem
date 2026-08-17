@@ -30,6 +30,123 @@ public sealed class NotificationIntegrationTests
     }
 
     [Fact]
+    public async Task CreateTicket_ByEmployee_CreatesNavigableNotificationForAdmin()
+    {
+        await ResetTicketCreationNotificationScenarioAsync();
+        var employeeToken = await LoginAsync(
+            CustomWebApplicationFactory.EmployeeEmail,
+            CustomWebApplicationFactory.EmployeePassword);
+        var adminToken = await LoginAsync(
+            CustomWebApplicationFactory.AdminEmail,
+            CustomWebApplicationFactory.AdminPassword);
+
+        var ticket = await CreateTicketViaApiAsync(employeeToken);
+
+        using var request = CreateAuthorizedRequest(
+            HttpMethod.Get,
+            "/api/notifications?pageNumber=1&pageSize=10",
+            adminToken);
+        var response = await _client.SendAsync(request);
+        var result = await response.Content
+            .ReadFromJsonAsync<PagedResult<NotificationDto>>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        var notification = Assert.Single(
+            result.Items,
+            item => item.Type == NotificationType.TicketCreated.ToString());
+        Assert.Equal(ticket.Id, notification.TicketId);
+        Assert.Equal(ticket.TicketNumber, notification.TicketNumber);
+        Assert.Equal("Yeni talep oluşturuldu", notification.Title);
+        Assert.Contains(ticket.TicketNumber, notification.Message);
+    }
+
+    [Fact]
+    public async Task CreateTicket_WithMultipleOperationalAdmins_CreatesOneNotificationEach()
+    {
+        await ResetTicketCreationNotificationScenarioAsync();
+        var firstAdmin = await CreateAdminAsync(AdminAccountKind.Operational);
+        var secondAdmin = await CreateAdminAsync(AdminAccountKind.Operational);
+        var employeeToken = await LoginAsync(
+            CustomWebApplicationFactory.EmployeeEmail,
+            CustomWebApplicationFactory.EmployeePassword);
+
+        var ticket = await CreateTicketViaApiAsync(employeeToken);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var defaultAdminId = await context.Users
+            .Where(user => user.Email == CustomWebApplicationFactory.AdminEmail)
+            .Select(user => user.Id)
+            .SingleAsync();
+        var notifications = await context.Notifications
+            .Where(notification =>
+                notification.TicketId == ticket.Id &&
+                notification.Type == NotificationType.TicketCreated)
+            .ToListAsync();
+
+        Assert.Equal(3, notifications.Count);
+        Assert.Equal(3, notifications.Select(item => item.UserId).Distinct().Count());
+        Assert.Contains(notifications, item => item.UserId == defaultAdminId);
+        Assert.Contains(notifications, item => item.UserId == firstAdmin.Id);
+        Assert.Contains(notifications, item => item.UserId == secondAdmin.Id);
+    }
+
+    [Fact]
+    public async Task CreateTicket_DoesNotNotifyNonOperationalAdmins()
+    {
+        await ResetTicketCreationNotificationScenarioAsync();
+        var inactiveAdmin = await CreateAdminAsync(AdminAccountKind.Inactive);
+        var pendingAdmin = await CreateAdminAsync(AdminAccountKind.PendingInvitation);
+        var employeeToken = await LoginAsync(
+            CustomWebApplicationFactory.EmployeeEmail,
+            CustomWebApplicationFactory.EmployeePassword);
+
+        var ticket = await CreateTicketViaApiAsync(employeeToken);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var recipients = await context.Notifications
+            .Where(notification =>
+                notification.TicketId == ticket.Id &&
+                notification.Type == NotificationType.TicketCreated)
+            .Select(notification => notification.UserId)
+            .ToListAsync();
+
+        Assert.Single(recipients);
+        Assert.DoesNotContain(inactiveAdmin.Id, recipients);
+        Assert.DoesNotContain(pendingAdmin.Id, recipients);
+    }
+
+    [Fact]
+    public async Task CreateTicket_ByAdmin_DoesNotNotifyCreatorAdmin()
+    {
+        await ResetTicketCreationNotificationScenarioAsync();
+        var otherAdmin = await CreateAdminAsync(AdminAccountKind.Operational);
+        var adminToken = await LoginAsync(
+            CustomWebApplicationFactory.AdminEmail,
+            CustomWebApplicationFactory.AdminPassword);
+
+        var ticket = await CreateTicketViaApiAsync(adminToken);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var creatorAdminId = await context.Users
+            .Where(user => user.Email == CustomWebApplicationFactory.AdminEmail)
+            .Select(user => user.Id)
+            .SingleAsync();
+        var notifications = await context.Notifications
+            .Where(notification =>
+                notification.TicketId == ticket.Id &&
+                notification.Type == NotificationType.TicketCreated)
+            .ToListAsync();
+
+        var notification = Assert.Single(notifications);
+        Assert.Equal(otherAdmin.Id, notification.UserId);
+        Assert.DoesNotContain(notifications, item => item.UserId == creatorAdminId);
+    }
+
+    [Fact]
     public async Task AssignTicket_CreatesNotificationForTargetTechnician()
     {
         var setup = await SeedTicketAsync(assignToTechnician: false);
@@ -255,6 +372,102 @@ public sealed class NotificationIntegrationTests
             technicianEmail);
     }
 
+    private async Task<TicketDto> CreateTicketViaApiAsync(string token)
+    {
+        Guid assetId;
+        Guid categoryId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider
+                .GetRequiredService<ApplicationDbContext>();
+            var departmentId = await context.Departments
+                .Select(department => department.Id)
+                .FirstAsync();
+            categoryId = await context.TicketCategories
+                .Where(category => category.IsActive)
+                .Select(category => category.Id)
+                .FirstAsync();
+            var asset = new Asset(
+                "Bildirim oluşturma cihazı",
+                $"NTC-{Guid.NewGuid():N}",
+                AssetType.Computer,
+                departmentId);
+            await context.Assets.AddAsync(asset);
+            await context.SaveChangesAsync();
+            assetId = asset.Id;
+        }
+
+        using var request = CreateAuthorizedRequest(
+            HttpMethod.Post,
+            "/api/tickets",
+            token,
+            new CreateTicketRequest
+            {
+                AssetId = assetId,
+                CategoryId = categoryId,
+                Title = "Admin bildirimi oluşturma testi",
+                Description = "Yeni talep bildiriminin alıcılarını doğrular.",
+                Priority = TicketPriority.Medium
+            });
+        var response = await _client.SendAsync(request);
+        var ticket = await response.Content.ReadFromJsonAsync<TicketDto>();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(ticket);
+        return ticket;
+    }
+
+    private async Task<User> CreateAdminAsync(AdminAccountKind accountKind)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var passwordHasher = scope.ServiceProvider
+            .GetRequiredService<IPasswordHashService>();
+        var departmentId = await context.Departments
+            .Select(department => department.Id)
+            .FirstAsync();
+        var email = $"notification-admin-{Guid.NewGuid():N}@example.com";
+        var admin = accountKind == AdminAccountKind.PendingInvitation
+            ? User.CreateInvited(
+                "Bildirim Bekleyen Admin",
+                email,
+                UserRole.Admin,
+                departmentId)
+            : new User(
+                "Bildirim Operasyonel Admin",
+                email,
+                passwordHasher.HashPassword("NotificationAdmin123!"),
+                UserRole.Admin,
+                departmentId);
+
+        if (accountKind == AdminAccountKind.Inactive)
+        {
+            admin.Deactivate();
+        }
+
+        await context.Users.AddAsync(admin);
+        await context.SaveChangesAsync();
+        return admin;
+    }
+
+    private async Task ResetTicketCreationNotificationScenarioAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        context.Notifications.RemoveRange(context.Notifications);
+        await context.SaveChangesAsync();
+
+        var customAdmins = await context.Users
+            .Where(user =>
+                user.Role == UserRole.Admin &&
+                user.Email != CustomWebApplicationFactory.AdminEmail)
+            .ToListAsync();
+        context.Users.RemoveRange(customAdmins);
+        await context.SaveChangesAsync();
+    }
+
     private async Task<InboxSetup> SeedInboxNotificationsAsync()
     {
         using var scope = _factory.Services.CreateScope();
@@ -342,4 +555,11 @@ public sealed class NotificationIntegrationTests
         Guid OtherUserId,
         Guid OwnNotificationId,
         Guid OtherNotificationId);
+
+    private enum AdminAccountKind
+    {
+        Operational,
+        Inactive,
+        PendingInvitation
+    }
 }

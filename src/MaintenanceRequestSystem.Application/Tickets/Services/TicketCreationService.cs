@@ -1,10 +1,13 @@
 ﻿using MaintenanceRequestSystem.Application.Assets.Interfaces;
 using MaintenanceRequestSystem.Application.Common.Exceptions;
 using MaintenanceRequestSystem.Application.Categories.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Interfaces;
+using MaintenanceRequestSystem.Application.Notifications.Services;
 using MaintenanceRequestSystem.Application.Tickets.Dtos;
 using MaintenanceRequestSystem.Application.Tickets.Interfaces;
 using MaintenanceRequestSystem.Application.Users.Interfaces;
 using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Domain.Enums;
 using MaintenanceRequestSystem.Application.Sla.Models;
 
 namespace MaintenanceRequestSystem.Application.Tickets.Services;
@@ -17,6 +20,7 @@ public sealed class TicketCreationService : ITicketCreationService
     private readonly ITicketNumberGenerator _ticketNumberGenerator;
     private readonly ITicketCategoryRepository _categoryRepository;
     private readonly SlaOptions _slaOptions;
+    private readonly INotificationWriter _notificationWriter;
 
     public TicketCreationService(
         ITicketRepository ticketRepository,
@@ -24,7 +28,8 @@ public sealed class TicketCreationService : ITicketCreationService
         IUserRepository userRepository,
         ITicketNumberGenerator ticketNumberGenerator,
         ITicketCategoryRepository categoryRepository,
-        SlaOptions? slaOptions = null)
+        SlaOptions? slaOptions = null,
+        INotificationWriter? notificationWriter = null)
     {
         _ticketRepository = ticketRepository;
         _assetRepository = assetRepository;
@@ -32,6 +37,7 @@ public sealed class TicketCreationService : ITicketCreationService
         _ticketNumberGenerator = ticketNumberGenerator;
         _categoryRepository = categoryRepository;
         _slaOptions = slaOptions ?? new SlaOptions();
+        _notificationWriter = notificationWriter ?? new NullNotificationWriter();
     }
 
     /// <summary>
@@ -124,6 +130,20 @@ public sealed class TicketCreationService : ITicketCreationService
 
         await _ticketRepository.AddAsync(
             ticket,
+            cancellationToken);
+
+        var adminRecipientIds =
+            await _userRepository.GetOperationalUserIdsByRoleAsync(
+                UserRole.Admin,
+                cancellationToken);
+
+        await _notificationWriter.AddAsync(
+            createdByUserId,
+            adminRecipientIds,
+            NotificationType.TicketCreated,
+            "Yeni talep oluşturuldu",
+            $"{ticket.TicketNumber} numaralı talep atama bekliyor.",
+            ticket.Id,
             cancellationToken);
 
         await _ticketRepository.SaveChangesAsync(

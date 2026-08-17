@@ -36,7 +36,7 @@ export function ForgotPasswordPage() {
         <main className="login-page">
             <section className="login-card" aria-labelledby="forgot-title">
                 <div className="login-brand">
-                    <span className="login-brand-mark" aria-hidden="true">M</span>
+                    <span className="login-brand-mark" aria-hidden="true">MRS</span>
                     <h1 id="forgot-title">Şifremi Unuttum</h1>
                     <p>Şifre sıfırlama bağlantısı için e-posta adresinizi girin.</p>
                 </div>

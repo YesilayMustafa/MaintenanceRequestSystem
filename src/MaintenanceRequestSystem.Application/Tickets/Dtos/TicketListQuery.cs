@@ -16,6 +16,10 @@ public sealed class TicketListQuery
 
     public SlaStatus? SlaStatus { get; init; }
 
+    public bool ActiveOnly { get; init; }
+
+    public bool UnassignedOnly { get; init; }
+
     public Guid? AssetId { get; init; }
 
     public string? TicketNumber { get; init; }

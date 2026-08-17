@@ -32,7 +32,7 @@ export function RoleRoute({
     }
 
     if (!user || !allowedRoles.includes(user.role)) {
-        return <Navigate to="/tickets" replace />;
+        return <Navigate to="/forbidden" replace />;
     }
 
     return children;

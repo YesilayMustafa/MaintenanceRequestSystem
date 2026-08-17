@@ -10,15 +10,6 @@ public sealed class DashboardRepository : IDashboardRepository
 {
     private const int RecentTicketLimit = 5;
 
-    private static readonly TicketStatus[] ActiveStatuses =
-    [
-        TicketStatus.Open,
-        TicketStatus.Assigned,
-        TicketStatus.InProgress,
-        TicketStatus.Waiting,
-        TicketStatus.Resolved
-    ];
-
     private static readonly TicketStatus[] WorkloadStatuses =
     [
         TicketStatus.Assigned,
@@ -51,7 +42,7 @@ public sealed class DashboardRepository : IDashboardRepository
                 .Select(group => new DashboardCounts(
                     group.Count(),
                     group.Count(ticket =>
-                        ActiveStatuses.Contains(ticket.Status)),
+                        TicketQueryScope.ActiveStatuses.Contains(ticket.Status)),
                     group.Count(ticket => ticket.Status == TicketStatus.Open),
                     group.Count(ticket => ticket.Status == TicketStatus.Assigned),
                     group.Count(ticket => ticket.Status == TicketStatus.InProgress),
@@ -61,7 +52,7 @@ public sealed class DashboardRepository : IDashboardRepository
                     group.Count(ticket => ticket.Status == TicketStatus.Cancelled),
                     group.Count(ticket =>
                         ticket.Priority == TicketPriority.Critical &&
-                        ActiveStatuses.Contains(ticket.Status)),
+                        TicketQueryScope.ActiveStatuses.Contains(ticket.Status)),
                     group.Count(ticket =>
                         ticket.Status != TicketStatus.Cancelled &&
                         (((ticket.Status == TicketStatus.Resolved ||

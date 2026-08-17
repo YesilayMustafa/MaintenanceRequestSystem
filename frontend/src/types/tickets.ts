@@ -114,6 +114,8 @@ export interface TicketListQuery {
     status?: TicketStatusValue;
     priority?: TicketPriorityValue;
     slaStatus?: SlaStatus;
+    activeOnly?: boolean;
+    unassignedOnly?: boolean;
     assetId?: string;
     ticketNumber?: string;
     search?: string;

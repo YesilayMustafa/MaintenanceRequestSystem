@@ -44,10 +44,16 @@ interface UserRoleBadgeProps {
     role: UserRole;
 }
 
+const roleLabels: Record<UserRole, string> = {
+    Employee: "Çalışan",
+    Technician: "Teknik Personel",
+    Admin: "Yönetici",
+};
+
 export function UserRoleBadge({ role }: UserRoleBadgeProps) {
     return (
         <span className={`badge role-badge role-${role.toLowerCase()}`}>
-            {role}
+            {roleLabels[role]}
         </span>
     );
 }

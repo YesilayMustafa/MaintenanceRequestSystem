@@ -3,7 +3,7 @@ import {
     useState,
     type FormEvent,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { getAssets } from "../api/assetsApi";
 import { getCategories } from "../api/categoriesApi";
@@ -38,6 +38,8 @@ interface TicketFilters {
     status: TicketStatusValue | "";
     priority: TicketPriorityValue | "";
     slaStatus: SlaStatus | "";
+    activeOnly: boolean;
+    unassignedOnly: boolean;
     assetId: string;
     categoryId: string;
     createdByUserId: string;
@@ -53,6 +55,8 @@ const initialFilters: TicketFilters = {
     status: "",
     priority: "",
     slaStatus: "",
+    activeOnly: false,
+    unassignedOnly: false,
     assetId: "",
     categoryId: "",
     createdByUserId: "",
@@ -66,23 +70,23 @@ const statusOptions: Array<{
     label: string;
     value: TicketStatusValue;
 }> = [
-    { label: "Open", value: 1 },
-    { label: "Assigned", value: 2 },
-    { label: "InProgress", value: 3 },
-    { label: "Waiting", value: 4 },
-    { label: "Resolved", value: 5 },
-    { label: "Closed", value: 6 },
-    { label: "Cancelled", value: 7 },
+    { label: "Açık", value: 1 },
+    { label: "Atandı", value: 2 },
+    { label: "İşlemde", value: 3 },
+    { label: "Bekliyor", value: 4 },
+    { label: "Çözüldü", value: 5 },
+    { label: "Kapandı", value: 6 },
+    { label: "İptal", value: 7 },
 ];
 
 const priorityOptions: Array<{
     label: string;
     value: TicketPriorityValue;
 }> = [
-    { label: "Low", value: 1 },
-    { label: "Medium", value: 2 },
-    { label: "High", value: 3 },
-    { label: "Critical", value: 4 },
+    { label: "Düşük", value: 1 },
+    { label: "Orta", value: 2 },
+    { label: "Yüksek", value: 3 },
+    { label: "Kritik", value: 4 },
 ];
 
 const slaOptions: Array<{ label: string; value: SlaStatus }> = [
@@ -116,6 +120,7 @@ const emptyResult: PagedResult<TicketDto> = {
 export function TicketsPage() {
     const { token, user } = useAuth();
     const isAdmin = user?.role === "Admin";
+    const [searchParams] = useSearchParams();
 
     const [result, setResult] = useState(emptyResult);
     const [assets, setAssets] = useState<AssetDto[]>([]);
@@ -123,9 +128,9 @@ export function TicketsPage() {
     const [users, setUsers] = useState<UserDto[]>([]);
     const [departments, setDepartments] = useState<DepartmentDto[]>([]);
     const [draftFilters, setDraftFilters] =
-        useState<TicketFilters>(initialFilters);
+        useState<TicketFilters>(() => getFiltersFromSearchParams(searchParams));
     const [appliedFilters, setAppliedFilters] =
-        useState<TicketFilters>(initialFilters);
+        useState<TicketFilters>(() => getFiltersFromSearchParams(searchParams));
     const [sortBy, setSortBy] = useState<TicketSortBy>("createdAt");
     const [sortDescending, setSortDescending] = useState(true);
     const [pageNumber, setPageNumber] = useState(1);
@@ -227,6 +232,8 @@ export function TicketsPage() {
                     status: appliedFilters.status || undefined,
                     priority: appliedFilters.priority || undefined,
                     slaStatus: appliedFilters.slaStatus || undefined,
+                    activeOnly: appliedFilters.activeOnly || undefined,
+                    unassignedOnly: appliedFilters.unassignedOnly || undefined,
                     assetId: appliedFilters.assetId || undefined,
                     ticketNumber:
                         appliedFilters.ticketNumber.trim() || undefined,
@@ -347,6 +354,14 @@ export function TicketsPage() {
                     </div>
                 </div>
 
+                {(appliedFilters.activeOnly || appliedFilters.unassignedOnly) && (
+                    <div className="filter-context" role="status">
+                        <strong>Dashboard kapsamı:</strong>
+                        {appliedFilters.activeOnly && <span>Aktif talepler</span>}
+                        {appliedFilters.unassignedOnly && <span>Atanmamış talepler</span>}
+                    </div>
+                )}
+
                 <form onSubmit={applyFilters}>
                     <div className="toolbar-grid">
                         <div className="form-group">
@@ -359,21 +374,6 @@ export function TicketsPage() {
                                 placeholder="Talep no, başlık veya açıklama..."
                                 onChange={(event) => updateDraftFilter(
                                     "search",
-                                    event.target.value
-                                )}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="ticket-number-filter">Talep No</label>
-                            <input
-                                id="ticket-number-filter"
-                                type="text"
-                                value={draftFilters.ticketNumber}
-                                maxLength={15}
-                                placeholder="REQ-2026-"
-                                onChange={(event) => updateDraftFilter(
-                                    "ticketNumber",
                                     event.target.value
                                 )}
                             />
@@ -442,50 +442,67 @@ export function TicketsPage() {
                             </select>
                         </div>
 
-                        <div className="form-group">
-                            <label htmlFor="ticket-category-filter">Kategori</label>
-                            <select
-                                id="ticket-category-filter"
-                                value={draftFilters.categoryId}
-                                onChange={(event) => updateDraftFilter(
-                                    "categoryId",
-                                    event.target.value
-                                )}
-                            >
-                                <option value="">Tüm kategoriler</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.name}
-                                        {category.isActive ? "" : " (Pasif)"}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="ticket-asset-filter">Cihaz</label>
-                            <select
-                                id="ticket-asset-filter"
-                                value={draftFilters.assetId}
-                                onChange={(event) => updateDraftFilter(
-                                    "assetId",
-                                    event.target.value
-                                )}
-                            >
-                                <option value="">Tüm cihazlar</option>
-                                {assets.map((asset) => (
-                                    <option key={asset.id} value={asset.id}>
-                                        {asset.name} ({asset.serialNumber})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
                     </div>
 
-                    {isAdmin && (
-                        <details className="advanced-filters">
-                            <summary>Gelişmiş Filtreler</summary>
+                    <details className="advanced-filters">
+                            <summary>Gelişmiş filtreler</summary>
                             <div className="toolbar-grid">
+                                <div className="form-group">
+                                    <label htmlFor="ticket-number-filter">Talep No</label>
+                                    <input
+                                        id="ticket-number-filter"
+                                        type="text"
+                                        value={draftFilters.ticketNumber}
+                                        maxLength={15}
+                                        placeholder="REQ-2026-"
+                                        onChange={(event) => updateDraftFilter(
+                                            "ticketNumber",
+                                            event.target.value
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="ticket-category-filter">Kategori</label>
+                                    <select
+                                        id="ticket-category-filter"
+                                        value={draftFilters.categoryId}
+                                        onChange={(event) => updateDraftFilter(
+                                            "categoryId",
+                                            event.target.value
+                                        )}
+                                    >
+                                        <option value="">Tüm kategoriler</option>
+                                        {categories.map((category) => (
+                                            <option key={category.id} value={category.id}>
+                                                {category.name}
+                                                {category.isActive ? "" : " (Pasif)"}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="ticket-asset-filter">Cihaz</label>
+                                    <select
+                                        id="ticket-asset-filter"
+                                        value={draftFilters.assetId}
+                                        onChange={(event) => updateDraftFilter(
+                                            "assetId",
+                                            event.target.value
+                                        )}
+                                    >
+                                        <option value="">Tüm cihazlar</option>
+                                        {assets.map((asset) => (
+                                            <option key={asset.id} value={asset.id}>
+                                                {asset.name} ({asset.serialNumber})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {isAdmin && (
+                                    <>
                                 <div className="form-group">
                                     <label htmlFor="ticket-created-by-filter">
                                         Oluşturan
@@ -552,18 +569,15 @@ export function TicketsPage() {
                                     >
                                         <option value="">Tüm departmanlar</option>
                                         {departments.map((department) => (
-                                            <option
-                                                key={department.id}
-                                                value={department.id}
-                                            >
+                                            <option key={department.id} value={department.id}>
                                                 {department.name}
-                                                {department.isActive
-                                                    ? ""
-                                                    : " (Pasif)"}
+                                                {department.isActive ? "" : " (Pasif)"}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
+                                    </>
+                                )}
 
                                 <div className="form-group">
                                     <label htmlFor="ticket-created-from-filter">
@@ -596,7 +610,6 @@ export function TicketsPage() {
                                 </div>
                             </div>
                         </details>
-                    )}
 
                     <div className="toolbar-grid ticket-list-preferences">
                         <div className="form-group">
@@ -715,38 +728,34 @@ export function TicketsPage() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Talep No</th>
-                                <th>Başlık</th>
-                                <th>Kategori</th>
+                                <th>Talep</th>
                                 <th>Durum</th>
                                 <th>Öncelik</th>
                                 <th>SLA</th>
-                                <th>Cihaz</th>
-                                <th>Oluşturan</th>
                                 <th>Teknisyen</th>
-                                <th>Oluşturulma</th>
+                                <th>Tarih</th>
                             </tr>
                         </thead>
                         <tbody>
                             {result.items.map((ticket) => (
                                 <tr key={ticket.id}>
-                                    <td>
+                                    <td className="ticket-primary-cell">
                                         <Link
                                             to={`/tickets/${ticket.id}`}
                                             className="table-link ticket-number"
                                         >
                                             {ticket.ticketNumber}
                                         </Link>
-                                    </td>
-                                    <td>
                                         <Link
                                             to={`/tickets/${ticket.id}`}
-                                            className="table-link"
+                                            className="table-link ticket-title-link"
                                         >
                                             {ticket.title}
                                         </Link>
+                                        <span className="ticket-cell-secondary">
+                                            {ticket.categoryName} · {ticket.assetName} · {ticket.createdByFullName}
+                                        </span>
                                     </td>
-                                    <td>{ticket.categoryName}</td>
                                     <td>
                                         <TicketStatusBadge status={ticket.status} />
                                     </td>
@@ -771,16 +780,14 @@ export function TicketsPage() {
                                             )}
                                         </div>
                                     </td>
-                                    <td>{ticket.assetName}</td>
-                                    <td>{ticket.createdByFullName}</td>
-                                    <td>
+                                    <td className="ticket-assignee-cell">
                                         {ticket.assignedTechnicianFullName ?? (
                                             <span className="muted-text">
                                                 Atanmadı
                                             </span>
                                         )}
                                     </td>
-                                    <td>
+                                    <td className="ticket-date-cell">
                                         {new Date(ticket.createdAt)
                                             .toLocaleString("tr-TR")}
                                     </td>
@@ -830,6 +837,49 @@ export function TicketsPage() {
 function toUtcDayStart(value: string): string {
     const [year, month, day] = value.split("-").map(Number);
     return new Date(year, month - 1, day, 0, 0, 0, 0).toISOString();
+}
+
+function getFiltersFromSearchParams(
+    searchParams: URLSearchParams
+): TicketFilters {
+    const status = Number(searchParams.get("status"));
+    const priority = Number(searchParams.get("priority"));
+    const slaStatus = searchParams.get("slaStatus");
+
+    return {
+        ...initialFilters,
+        status: isTicketStatusValue(status) ? status : "",
+        priority: isTicketPriorityValue(priority) ? priority : "",
+        slaStatus: isSlaStatus(slaStatus) ? slaStatus : "",
+        activeOnly: searchParams.get("activeOnly") === "true",
+        unassignedOnly: searchParams.get("unassignedOnly") === "true",
+        categoryId: searchParams.get("categoryId") ?? "",
+        assignedTechnicianId:
+            searchParams.get("assignedTechnicianId") ?? "",
+        departmentId: searchParams.get("departmentId") ?? "",
+        createdFrom: getDateParameter(searchParams, "createdFrom"),
+        createdTo: getDateParameter(searchParams, "createdTo"),
+    };
+}
+
+function isTicketStatusValue(value: number): value is TicketStatusValue {
+    return Number.isInteger(value) && value >= 1 && value <= 7;
+}
+
+function isTicketPriorityValue(value: number): value is TicketPriorityValue {
+    return Number.isInteger(value) && value >= 1 && value <= 4;
+}
+
+function isSlaStatus(value: string | null): value is SlaStatus {
+    return value !== null && slaOptions.some((option) => option.value === value);
+}
+
+function getDateParameter(
+    searchParams: URLSearchParams,
+    name: "createdFrom" | "createdTo"
+): string {
+    const value = searchParams.get(name) ?? "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
 }
 
 function toUtcDayEnd(value: string): string {

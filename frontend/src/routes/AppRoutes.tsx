@@ -19,6 +19,9 @@ import { UsersPage } from "../pages/UsersPage";
 import { NotificationsPage } from "../pages/NotificationsPage";
 import { AssetMaintenanceHistoryPage } from "../pages/AssetMaintenanceHistoryPage";
 import { ReportsPage } from "../pages/ReportsPage";
+import { ForbiddenPage } from "../pages/ForbiddenPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
+import { TimelinePage } from "../pages/TimelinePage";
 
 const adminRoles = ["Admin"] as const;
 
@@ -63,6 +66,7 @@ export function AppRoutes() {
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/forbidden" element={<ForbiddenPage />} />
                 <Route
                     path="/categories"
                     element={
@@ -96,13 +100,14 @@ export function AppRoutes() {
                     }
                 />
                 <Route path="/tickets" element={<TicketsPage />} />
+                <Route path="/timeline" element={<TimelinePage />} />
                 <Route path="/tickets/new" element={<CreateTicketPage />} />
                 <Route path="/tickets/:id" element={<TicketDetailsPage />} />
             </Route>
 
             <Route
                 path="*"
-                element={<Navigate to="/dashboard" replace />}
+                element={<NotFoundPage />}
             />
         </Routes>
     );

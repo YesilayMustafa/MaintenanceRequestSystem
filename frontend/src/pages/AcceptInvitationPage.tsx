@@ -51,7 +51,7 @@ export function AcceptInvitationPage() {
         <main className="login-page">
             <section className="login-card" aria-labelledby="accept-title">
                 <div className="login-brand">
-                    <span className="login-brand-mark" aria-hidden="true">M</span>
+                    <span className="login-brand-mark" aria-hidden="true">MRS</span>
                     <h1 id="accept-title">Hesabınızı Etkinleştirin</h1>
                     <p>Davetinizi tamamlamak için güvenli bir parola belirleyin.</p>
                 </div>

@@ -36,13 +36,13 @@ interface TicketActionsProps {
 }
 
 const priorityOptions: Array<{
-    label: TicketPriority;
+    label: string;
     value: TicketPriorityValue;
 }> = [
-    { label: "Low", value: 1 },
-    { label: "Medium", value: 2 },
-    { label: "High", value: 3 },
-    { label: "Critical", value: 4 },
+    { label: "Düşük", value: 1 },
+    { label: "Orta", value: 2 },
+    { label: "Yüksek", value: 3 },
+    { label: "Kritik", value: 4 },
 ];
 
 const priorityValues: Record<TicketPriority, TicketPriorityValue> = {

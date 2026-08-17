@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using MaintenanceRequestSystem.Application.Common.Exceptions;
 using Npgsql;
 using System.Data;
+using MaintenanceRequestSystem.Domain.Enums;
 
 namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 
@@ -55,6 +56,22 @@ public sealed class UserRepository : IUserRepository
             .FirstOrDefaultAsync(
                 user => user.Email == normalizedEmail,
                 cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetOperationalUserIdsByRoleAsync(
+        UserRole role,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .Where(user =>
+                user.Role == role &&
+                user.IsActive &&
+                user.InvitationAcceptedAt.HasValue &&
+                user.PasswordHash != null &&
+                user.PasswordHash != string.Empty)
+            .Select(user => user.Id)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> EmailExistsAsync(

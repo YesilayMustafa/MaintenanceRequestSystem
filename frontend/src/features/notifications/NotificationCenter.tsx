@@ -15,6 +15,7 @@ import {
 import { ApiError } from "../../api/httpClient";
 import { NotificationList } from "./NotificationList";
 import { subscribeToNotificationsChanged } from "./notificationEvents";
+import { Icon } from "../../components/Icon";
 
 import type { NotificationDto } from "../../types/notifications";
 
@@ -163,9 +164,7 @@ export function NotificationCenter({ token }: NotificationCenterProps) {
                 aria-controls="notification-panel"
                 onClick={() => setIsOpen((open) => !open)}
             >
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-                </svg>
+                <Icon name="bell" />
                 {unreadCount > 0 && (
                     <span className="notification-badge">{badgeText}</span>
                 )}

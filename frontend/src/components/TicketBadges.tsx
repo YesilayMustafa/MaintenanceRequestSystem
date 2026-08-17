@@ -2,6 +2,10 @@ import type {
     TicketPriority,
     TicketStatus,
 } from "../types/tickets";
+import {
+    getTicketPriorityLabel,
+    getTicketStatusLabel,
+} from "../utils/ticketPresentation";
 
 interface TicketStatusBadgeProps {
     status: TicketStatus;
@@ -10,7 +14,7 @@ interface TicketStatusBadgeProps {
 export function TicketStatusBadge({ status }: TicketStatusBadgeProps) {
     return (
         <span className={`badge badge-status badge-${status.toLowerCase()}`}>
-            {status}
+            {getTicketStatusLabel(status)}
         </span>
     );
 }
@@ -24,7 +28,7 @@ export function TicketPriorityBadge({
 }: TicketPriorityBadgeProps) {
     return (
         <span className={`badge badge-priority badge-${priority.toLowerCase()}`}>
-            {priority}
+            {getTicketPriorityLabel(priority)}
         </span>
     );
 }

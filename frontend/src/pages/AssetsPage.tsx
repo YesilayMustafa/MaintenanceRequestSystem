@@ -447,11 +447,8 @@ export function AssetsPage() {
                 <table>
                     <thead>
                         <tr>
-                            <th>Ad</th>
-                            <th>Seri Numarası</th>
-                            <th>Tür</th>
-                            <th>Departman</th>
-                            <th>Konum</th>
+                            <th>Cihaz</th>
+                            <th>Departman / Konum</th>
                             <th>Durum</th>
                             <th>İşlemler</th>
                         </tr>
@@ -460,14 +457,19 @@ export function AssetsPage() {
                     <tbody>
                         {assets.map((asset) => (
                             <tr key={asset.id}>
-                                <td>{asset.name}</td>
-                                <td>{asset.serialNumber}</td>
-                                <td>{assetTypeLabels[asset.type]}</td>
-                                <td>{asset.departmentName}</td>
                                 <td>
+                                    <strong>{asset.name}</strong>
+                                    <span className="ticket-cell-secondary">
+                                        {asset.serialNumber} · {assetTypeLabels[asset.type]}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span>{asset.departmentName}</span>
+                                    <span className="ticket-cell-secondary">
                                     {asset.location ?? (
-                                        <span className="muted-text">Belirtilmedi</span>
+                                        "Konum belirtilmedi"
                                     )}
+                                    </span>
                                 </td>
                                 <td>
                                     <ActiveStatusBadge isActive={asset.isActive} />

@@ -103,7 +103,7 @@ export function TicketActivityTimeline({
     }
 
     return (
-        <section className="card" aria-labelledby="activity-title">
+        <section className="card ticket-activity-card" aria-labelledby="activity-title">
             <div className="card-header">
                 <div>
                     <h2 id="activity-title">Talep Aktivitesi</h2>

@@ -157,6 +157,33 @@ public sealed class TicketsController : ControllerBase
     }
 
     /// <summary>
+    /// JWT kullanıcısının erişebildiği ve istenen UTC aralığıyla kesişen
+    /// talepleri zaman çizelgesi read modeli olarak getirir.
+    /// </summary>
+    [HttpGet("timeline")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<TicketTimelineItemDto>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<TicketTimelineItemDto>>> GetTimeline(
+        [FromQuery] TicketTimelineQuery query,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _ticketQueryService.GetTimelineAsync(
+            userId,
+            role,
+            query,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Talebe atanmış teknik personelin çalışmayı başlatmasını sağlar.
     /// Kullanıcı kimliği ve rolü JWT claim'lerinden alınır.
     /// </summary>

@@ -28,6 +28,8 @@ import { formatSlaRemainingTime } from "../utils/sla";
 import { TicketActions } from "../features/tickets/TicketActions";
 import { TicketAttachments } from "../features/tickets/TicketAttachments";
 import { TicketActivityTimeline } from "../features/tickets/TicketActivityTimeline";
+import { Icon } from "../components/Icon";
+import { getTicketStatusLabel } from "../utils/ticketPresentation";
 
 import type { TicketCommentDto } from "../types/comments";
 import type {
@@ -170,28 +172,29 @@ export function TicketDetailsPage() {
 
     return (
         <div className="page">
-            <header className="page-header">
+            <header className="page-header ticket-hero">
                 <div>
-                    <Link to="/tickets" className="table-link">
-                        ← Talep listesine dön
+                    <Link to="/tickets" className="table-link ticket-back-link">
+                        <Icon name="arrowLeft" size={16} />
+                        Talep listesine dön
                     </Link>
                     <p className="ticket-reference">{ticket.ticketNumber}</p>
                     <h1 className="page-title">{ticket.title}</h1>
-                    <div className="page-header-actions">
+                    <div className="ticket-hero-badges">
                         <TicketStatusBadge status={ticket.status} />
                         <TicketPriorityBadge priority={ticket.priority} />
+                        <SlaBadge status={ticket.slaStatus} />
                     </div>
                 </div>
             </header>
 
             <div className="details-grid">
                 <div className="details-stack">
-                    <section className="card" aria-labelledby="ticket-info-title">
+                    <section className="card ticket-description-card" aria-labelledby="ticket-info-title">
                         <div className="card-header">
-                            <h2 id="ticket-info-title">Talep Bilgileri</h2>
+                            <h2 id="ticket-info-title">Talep Açıklaması</h2>
                         </div>
 
-                        <h3>Açıklama</h3>
                         <p className="description-text">{ticket.description}</p>
 
                         <dl className="definition-grid">
@@ -309,10 +312,8 @@ export function TicketDetailsPage() {
                         />
                     )}
 
-                    <section className="card" aria-labelledby="history-title">
-                        <div className="card-header">
-                            <h2 id="history-title">Talep Geçmişi</h2>
-                        </div>
+                    <details className="card status-history" aria-labelledby="history-title">
+                        <summary id="history-title">Durum Geçmişi</summary>
 
                 {history.length === 0 ? (
                             <p className="empty-state">Geçmiş kaydı bulunamadı.</p>
@@ -325,9 +326,11 @@ export function TicketDetailsPage() {
                                     >
                                         <p className="timeline-title">
                                     <strong>
-                                        {historyItem.oldStatus ?? "Başlangıç"}
+                                        {historyItem.oldStatus
+                                            ? getTicketStatusLabel(historyItem.oldStatus)
+                                            : "Başlangıç"}
                                                 {" → "}
-                                        {historyItem.newStatus}
+                                        {getTicketStatusLabel(historyItem.newStatus)}
                                     </strong>
                                 </p>
 
@@ -344,9 +347,9 @@ export function TicketDetailsPage() {
                         ))}
                             </ol>
                 )}
-            </section>
+            </details>
 
-                    <section className="card" aria-labelledby="comments-title">
+                    <section className="card ticket-comments-card" aria-labelledby="comments-title">
                         <div className="card-header">
                             <h2 id="comments-title">Yorumlar</h2>
                         </div>
@@ -425,7 +428,54 @@ export function TicketDetailsPage() {
             </section>
                 </div>
 
-                <aside>
+                <aside className="details-sidebar">
+                    <section className="card metadata-card" aria-labelledby="metadata-title">
+                        <div className="card-header">
+                            <h2 id="metadata-title">Talep Özeti</h2>
+                        </div>
+                        <dl className="definition-grid">
+                            <div className="definition-item">
+                                <dt>Cihaz</dt>
+                                <dd>{ticket.assetName}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Seri No</dt>
+                                <dd>{ticket.assetSerialNumber}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Kategori</dt>
+                                <dd>{ticket.categoryName}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Oluşturan</dt>
+                                <dd>{ticket.createdByFullName}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Teknisyen</dt>
+                                <dd>{ticket.assignedTechnicianFullName ?? "Atanmadı"}</dd>
+                            </div>
+                            <div className="definition-item">
+                                <dt>Oluşturulma</dt>
+                                <dd>{new Date(ticket.createdAt).toLocaleString("tr-TR")}</dd>
+                            </div>
+                            {ticket.updatedAt && (
+                                <div className="definition-item">
+                                    <dt>Güncellenme</dt>
+                                    <dd>{new Date(ticket.updatedAt).toLocaleString("tr-TR")}</dd>
+                                </div>
+                            )}
+                            <div className="definition-item">
+                                <dt>SLA Son</dt>
+                                <dd>{new Date(ticket.slaDueAt).toLocaleString("tr-TR")}</dd>
+                            </div>
+                            {formatSlaRemainingTime(ticket.slaStatus, ticket.slaRemainingMinutes) && (
+                                <div className="definition-item">
+                                    <dt>SLA Durumu</dt>
+                                    <dd>{formatSlaRemainingTime(ticket.slaStatus, ticket.slaRemainingMinutes)}</dd>
+                                </div>
+                            )}
+                        </dl>
+                    </section>
                     {user && token && (
                         <TicketActions
                             ticket={ticket}

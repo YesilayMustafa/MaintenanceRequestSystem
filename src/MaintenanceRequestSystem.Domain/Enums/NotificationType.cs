@@ -11,5 +11,6 @@ public enum NotificationType
     TicketCancelled = 7,
     TicketCommentAdded = 8,
     TicketPriorityChanged = 9,
-    TicketCategoryChanged = 10
+    TicketCategoryChanged = 10,
+    TicketCreated = 11
 }
