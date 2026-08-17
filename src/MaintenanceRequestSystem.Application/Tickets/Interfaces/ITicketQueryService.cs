@@ -12,6 +12,12 @@ public interface ITicketQueryService
         TicketListQuery query,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<TicketTimelineItemDto>> GetTimelineAsync(
+        Guid currentUserId,
+        UserRole currentUserRole,
+        TicketTimelineQuery query,
+        CancellationToken cancellationToken = default);
+
     Task<TicketDto> GetByIdAsync(
         Guid id,
         Guid currentUserId,

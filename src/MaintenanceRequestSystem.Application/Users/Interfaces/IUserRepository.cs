@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 using MaintenanceRequestSystem.Domain.Entities;
+using MaintenanceRequestSystem.Domain.Enums;
 
 namespace MaintenanceRequestSystem.Application.Users.Interfaces;
 
@@ -18,6 +19,18 @@ public interface IUserRepository
     Task<User?> GetByEmailAsync(
         string email,
         CancellationToken cancellationToken = default);
+
+    async Task<IReadOnlyList<Guid>> GetOperationalUserIdsByRoleAsync(
+        UserRole role,
+        CancellationToken cancellationToken = default)
+    {
+        var users = await GetAllAsync(cancellationToken);
+
+        return users
+            .Where(user => user.Role == role && user.IsOperational)
+            .Select(user => user.Id)
+            .ToList();
+    }
 
     Task<bool> EmailExistsAsync(
         string email,

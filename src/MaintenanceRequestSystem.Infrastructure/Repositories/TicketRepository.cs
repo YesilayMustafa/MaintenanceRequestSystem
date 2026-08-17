@@ -60,6 +60,18 @@ public sealed class TicketRepository : ITicketRepository
                 DateTime.UtcNow);
         }
 
+        if (query.ActiveOnly)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                TicketQueryScope.ActiveStatuses.Contains(ticket.Status));
+        }
+
+        if (query.UnassignedOnly)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.AssignedTechnicianId == null);
+        }
+
         if (query.AssetId.HasValue)
         {
             ticketQuery =
@@ -180,6 +192,72 @@ public sealed class TicketRepository : ITicketRepository
                 .ToListAsync(cancellationToken);
 
         return (items, totalCount);
+    }
+
+    public async Task<IReadOnlyList<Ticket>> GetTimelineAsync(
+        Guid currentUserId,
+        UserRole currentUserRole,
+        TicketTimelineQuery query,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Ticket> ticketQuery =
+            _context.Tickets
+                .AsNoTracking()
+                .Include(ticket => ticket.Category)
+                .Include(ticket => ticket.AssignedTechnician);
+
+        ticketQuery = TicketQueryScope.Apply(
+            ticketQuery,
+            currentUserId,
+            currentUserRole);
+
+        ticketQuery = ticketQuery.Where(ticket =>
+            ticket.CreatedAt <= query.To &&
+            ticket.SlaDueAt >= query.From);
+
+        if (query.Status.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.Status == query.Status.Value);
+        }
+
+        if (query.Priority.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.Priority == query.Priority.Value);
+        }
+
+        if (query.SlaStatus.HasValue)
+        {
+            ticketQuery = ApplySlaStatusFilter(
+                ticketQuery,
+                query.SlaStatus.Value,
+                utcNow);
+        }
+
+        if (query.CategoryId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.CategoryId == query.CategoryId.Value);
+        }
+
+        if (query.AssignedTechnicianId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.AssignedTechnicianId == query.AssignedTechnicianId.Value);
+        }
+
+        if (query.DepartmentId.HasValue)
+        {
+            ticketQuery = ticketQuery.Where(ticket =>
+                ticket.CreatedByUser.DepartmentId == query.DepartmentId.Value);
+        }
+
+        return await ticketQuery
+            .OrderBy(ticket => ticket.CreatedAt)
+            .ThenBy(ticket => ticket.Id)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<Ticket?> GetByIdAsync(

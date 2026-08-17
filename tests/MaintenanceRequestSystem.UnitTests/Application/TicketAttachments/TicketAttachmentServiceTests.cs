@@ -215,6 +215,16 @@ public sealed class TicketAttachmentServiceTests
             return Task.FromResult<(IReadOnlyList<Ticket>, int)>(([], 0));
         }
 
+        public Task<IReadOnlyList<Ticket>> GetTimelineAsync(
+            Guid currentUserId,
+            UserRole currentUserRole,
+            TicketTimelineQuery query,
+            DateTime utcNow,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Ticket>>([]);
+        }
+
         public Task<IReadOnlyList<TicketHistory>> GetHistoriesAsync(
             Guid ticketId,
             CancellationToken cancellationToken = default)

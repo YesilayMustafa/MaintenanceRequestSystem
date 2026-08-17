@@ -5,6 +5,15 @@ namespace MaintenanceRequestSystem.Infrastructure.Repositories;
 
 internal static class TicketQueryScope
 {
+    internal static readonly TicketStatus[] ActiveStatuses =
+    [
+        TicketStatus.Open,
+        TicketStatus.Assigned,
+        TicketStatus.InProgress,
+        TicketStatus.Waiting,
+        TicketStatus.Resolved
+    ];
+
     internal static IQueryable<Ticket> Apply(
         IQueryable<Ticket> query,
         Guid currentUserId,

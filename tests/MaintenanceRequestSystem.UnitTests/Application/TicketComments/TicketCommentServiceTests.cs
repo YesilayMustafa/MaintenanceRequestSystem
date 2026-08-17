@@ -420,6 +420,16 @@ public sealed class TicketCommentServiceTests
                 ));
         }
 
+        public Task<IReadOnlyList<Ticket>> GetTimelineAsync(
+            Guid currentUserId,
+            UserRole currentUserRole,
+            TicketTimelineQuery query,
+            DateTime utcNow,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<Ticket>>([]);
+        }
+
         public Task<Ticket?> GetByIdAsync(
             Guid id,
             CancellationToken cancellationToken = default)
