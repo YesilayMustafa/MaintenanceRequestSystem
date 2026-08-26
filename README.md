@@ -1,5 +1,18 @@
 # Maintenance Request System
 
+![C#](https://img.shields.io/badge/C%23-512BD4?style=flat-square&logo=csharp&logoColor=white)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet&logoColor=white)
+![ASP.NET Core 10](https://img.shields.io/badge/ASP.NET_Core-10-512BD4?style=flat-square&logo=dotnet&logoColor=white)
+![Entity Framework Core 10](https://img.shields.io/badge/Entity_Framework_Core-10-512BD4?style=flat-square&logo=dotnet&logoColor=white)
+![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript 6](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Vite 8](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)
+![xUnit 2.9.3](https://img.shields.io/badge/xUnit-2.9.3-512BD4?style=flat-square)
+![JWT](https://img.shields.io/badge/JWT-Authentication-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=flat-square&logo=git&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)
+
 Maintenance Request System is a full-stack maintenance request management application built with an ASP.NET Core backend, a PostgreSQL database, and a React frontend. It provides a role-based workflow for employees, technicians, and administrators to manage maintenance requests from creation through resolution and closure.
 
 The repository is intended as a practical backend-focused portfolio project. It demonstrates layered application design, domain-level workflow rules, authenticated API development, persistence with Entity Framework Core, and automated backend testing.
@@ -11,6 +24,26 @@ The application provides a central place for organizations to register assets, c
 - **Employees** create requests and follow, comment on, attach files to, close, reopen, or cancel their own requests where the current ticket state permits it.
 - **Technicians** work with requests assigned to them and move those requests through the technical lifecycle.
 - **Administrators** manage users, departments, assets, categories, assignments, priorities, reporting, and audit records.
+
+## Preview
+
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="Maintenance Request System dashboard" width="900">
+  <br>
+  <sub><strong>Dashboard</strong> — Role-aware overview of workload, ticket status, and SLA metrics.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/ticket-detail.png" alt="Maintenance request ticket detail and activity" width="900">
+  <br>
+  <sub><strong>Ticket Management</strong> — Request activity, asset context, assignment details, and administrative actions.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/sla-timeline.png" alt="Weekly maintenance request SLA timeline" width="900">
+  <br>
+  <sub><strong>SLA Timeline</strong> — Weekly SLA planning with operational filters and deadline visibility.</sub>
+</p>
 
 ## Key Features
 
@@ -133,18 +166,26 @@ Ticket transitions are enforced by the `Ticket` domain entity. Assignment and te
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Open: Ticket created
-    Open --> Assigned: Admin assigns technician
-    Assigned --> Assigned: Admin reassigns technician
-    Assigned --> InProgress: Assigned technician starts work
-    InProgress --> Waiting: Assigned technician puts on hold
-    Waiting --> InProgress: Assigned technician resumes work
-    InProgress --> Resolved: Assigned technician resolves
-    Resolved --> Closed: Employee owner or Admin closes
-    Closed --> InProgress: Employee owner or Admin reopens
-    Open --> Cancelled: Employee owner or Admin cancels
-    Assigned --> Cancelled: Employee owner or Admin cancels
-    Waiting --> Cancelled: Employee owner or Admin cancels
+    direction LR
+
+    state "In progress" as InProgress
+    state "Soft deleted" as SoftDeleted
+
+    [*] --> Open: Created
+    Open --> Assigned: Admin assigns
+    Assigned --> InProgress: Technician starts
+    InProgress --> Resolved: Technician resolves
+    Resolved --> Closed: Owner/Admin closes
+
+    InProgress --> Waiting: Technician puts on hold
+    Waiting --> InProgress: Technician resumes
+    Closed --> InProgress: Owner/Admin reopens
+
+    Assigned --> Assigned: Admin reassigns
+    Open --> Cancelled: Owner/Admin cancels
+    Assigned --> Cancelled: Owner/Admin cancels
+    Waiting --> Cancelled: Owner/Admin cancels
+
     Closed --> SoftDeleted: Admin soft-deletes
     Cancelled --> SoftDeleted: Admin soft-deletes
 ```
